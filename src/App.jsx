@@ -41,6 +41,7 @@ function App() {
                     <Route path="/invoices" element={<InvoicesList />} />
                     <Route path="/payments" element={<PaymentsList />} />
                     <Route path="/invoice-generator" element={<InvoiceGenerator />} />
+                    <Route path="/invoice-edit/:id" element={<InvoiceGenerator />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/team" element={<TeamUsers />} />
                     <Route path="*" element={<Dashboard />} />

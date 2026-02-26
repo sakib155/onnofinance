@@ -59,6 +59,7 @@ const ClientLedger = () => {
             invoices.forEach(inv => {
                 entries.push({
                     type: 'INVOICE',
+                    id: inv.id,
                     date: new Date(inv.invoice_date),
                     displayDate: inv.invoice_date,
                     ref: inv.invoice_no,
@@ -153,7 +154,13 @@ const ClientLedger = () => {
                                         {entry.type === 'PAYMENT' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)' }}><CreditCard size={14} /> PAYMENT</span>}
                                         {entry.type === 'OPENING' && <span style={{ color: 'var(--color-text-muted)' }}>START</span>}
                                     </td>
-                                    <td>{entry.ref}</td>
+                                    <td>
+                                        {entry.type === 'INVOICE' ? (
+                                            <Link to={`/invoice-edit/${entry.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: '500' }}>
+                                                {entry.ref}
+                                            </Link>
+                                        ) : entry.ref}
+                                    </td>
                                     <td>{entry.description}</td>
                                     <td className="text-right font-medium">{entry.debit > 0 ? `৳ ${entry.debit.toLocaleString()}` : '-'}</td>
                                     <td className="text-right font-medium text-success">{entry.credit > 0 ? `৳ ${entry.credit.toLocaleString()}` : '-'}</td>

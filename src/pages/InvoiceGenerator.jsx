@@ -3,6 +3,7 @@ import { Download, Save, Plus, Trash2, CheckCircle } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../utils/supabase';
+import { useParams, useNavigate } from 'react-router-dom';
 import './InvoiceGenerator.css';
 import InvoicePreview from '../components/InvoicePreview';
 
@@ -10,6 +11,10 @@ const initialLineItem = { description: '', quantity: 1, rate: 0, amount: 0 };
 const initialPayment = { date: new Date().toISOString().split('T')[0], amount: 0 };
 
 const InvoiceGenerator = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const isEditing = !!id;
+
     const previewRef = useRef(null);
     const [isSaving, setIsSaving] = useState(false);
     const [clientsList, setClientsList] = useState([]);
@@ -33,7 +38,37 @@ const InvoiceGenerator = () => {
 
     useEffect(() => {
         fetchClients();
-    }, []);
+        if (id) {
+            loadInvoice(id);
+        }
+    }, [id]);
+
+    const loadInvoice = async (invoiceId) => {
+        try {
+            const { data: inv, error } = await supabase.from('invoices').select('*').eq('id', invoiceId).single();
+            if (error) throw error;
+
+            const { data: items } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoiceId);
+            const { data: pays } = await supabase.from('payments').select('*').eq('invoice_id', invoiceId);
+
+            setSelectedClient(inv.client_id);
+            setInvoiceData(prev => ({
+                ...prev,
+                invoiceNo: inv.invoice_no,
+                invoiceDate: inv.invoice_date,
+                notes: inv.notes || ''
+            }));
+
+            if (items?.length) setLineItems(items.map(it => ({ id: it.id, description: it.description, quantity: it.quantity, rate: it.rate, amount: it.amount })));
+            if (pays?.length) setPayments(pays.map(p => ({ id: p.id, date: p.payment_date, amount: p.amount })));
+
+            setPreviousDue(parseFloat(inv.previous_due || 0));
+        } catch (error) {
+            console.error('Error loading config:', error);
+            alert('Could not load invoice data.');
+            navigate('/invoices');
+        }
+    };
 
     const fetchClients = async () => {
         try {
@@ -45,7 +80,7 @@ const InvoiceGenerator = () => {
     };
 
     useEffect(() => {
-        if (selectedClient) {
+        if (selectedClient && clientsList.length > 0) {
             const client = clientsList.find(c => c.id === selectedClient);
             if (client) {
                 setInvoiceData(prev => ({
@@ -54,10 +89,10 @@ const InvoiceGenerator = () => {
                     phone: client.phone || '',
                     address: client.address || ''
                 }));
-                fetchClientBalance(client.id);
+                if (!isEditing) fetchClientBalance(client.id);
             }
         }
-    }, [selectedClient]);
+    }, [selectedClient, clientsList, isEditing]);
 
     const fetchClientBalance = async (clientId) => {
         try {
@@ -189,43 +224,85 @@ const InvoiceGenerator = () => {
 
         setIsSaving(true);
         try {
-            // 1. Create Draft Header
-            const { data: inv, error: invError } = await supabase.from('invoices').insert([{
-                client_id: selectedClient,
-                invoice_no: `DRAFT-${Date.now()}`,
-                invoice_date: invoiceData.invoiceDate,
-                due_date: invoiceData.invoiceDate, // Temp, will be updated by finalize
-                notes: invoiceData.notes,
-                status: 'DRAFT'
-            }]).select().single();
+            let currentInvId = id;
 
-            if (invError) throw invError;
+            if (isEditing) {
+                // UPDATE
+                const { error: updError } = await supabase.from('invoices').update({
+                    invoice_date: invoiceData.invoiceDate,
+                    notes: invoiceData.notes,
+                    updated_at: new Date().toISOString()
+                }).eq('id', currentInvId);
+                if (updError) throw updError;
 
-            // 2. Add Line Items
-            const itemsToInsert = lineItems.map(it => ({
-                invoice_id: inv.id,
-                description: it.description,
-                quantity: it.quantity,
-                rate: it.rate
-            }));
+                await supabase.from('invoice_items').delete().eq('invoice_id', currentInvId);
+                const itemsToInsert = lineItems.map(it => ({
+                    invoice_id: currentInvId,
+                    description: it.description,
+                    quantity: it.quantity,
+                    rate: it.rate
+                }));
+                await supabase.from('invoice_items').insert(itemsToInsert);
 
-            const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
-            if (itemsError) throw itemsError;
+                await supabase.from('payments').delete().eq('invoice_id', currentInvId);
+                if (payments.length > 0) {
+                    const paysToInsert = payments.map(p => ({
+                        client_id: selectedClient,
+                        invoice_id: currentInvId,
+                        payment_date: p.date,
+                        amount: p.amount,
+                        method: 'Custom'
+                    }));
+                    await supabase.from('payments').insert(paysToInsert);
+                }
 
-            // 3. Finalize Invoice
-            const { error: finalizeError } = await supabase.rpc('finalize_invoice', { p_invoice_id: inv.id });
-            if (finalizeError) throw finalizeError;
+                await supabase.rpc('recalc_invoice', { p_invoice_id: currentInvId });
+                alert('Invoice successfully updated!');
+                navigate(-1);
+            } else {
+                // INSERT DRAFT
+                const { data: inv, error: invError } = await supabase.from('invoices').insert([{
+                    client_id: selectedClient,
+                    invoice_no: `DRAFT-${Date.now()}`,
+                    invoice_date: invoiceData.invoiceDate,
+                    due_date: invoiceData.invoiceDate,
+                    notes: invoiceData.notes,
+                    status: 'DRAFT'
+                }]).select().single();
 
-            // 4. Fetch the finalized invoice to get the real invoiceNo
-            const { data: finalInv } = await supabase.from('invoices').select('invoice_no').eq('id', inv.id).single();
-            if (finalInv) {
-                setInvoiceData(prev => ({ ...prev, invoiceNo: finalInv.invoice_no }));
+                if (invError) throw invError;
+                currentInvId = inv.id;
+
+                const itemsToInsert = lineItems.map(it => ({
+                    invoice_id: currentInvId,
+                    description: it.description,
+                    quantity: it.quantity,
+                    rate: it.rate
+                }));
+                const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
+                if (itemsError) throw itemsError;
+
+                if (payments.length > 0) {
+                    const paysToInsert = payments.map(p => ({
+                        client_id: selectedClient,
+                        invoice_id: currentInvId,
+                        payment_date: p.date,
+                        amount: p.amount,
+                        method: 'Cash'
+                    }));
+                    await supabase.from('payments').insert(paysToInsert);
+                }
+
+                const { error: finalizeError } = await supabase.rpc('finalize_invoice', { p_invoice_id: currentInvId });
+                if (finalizeError) throw finalizeError;
+
+                const { data: finalInv } = await supabase.from('invoices').select('invoice_no').eq('id', currentInvId).single();
+                if (finalInv) setInvoiceData(prev => ({ ...prev, invoiceNo: finalInv.invoice_no }));
+
+                alert('Invoice successfully created and finalized!');
             }
-
-            alert('Invoice successfully created and finalized!');
-
         } catch (error) {
-            console.error('Error finalizing invoice:', error);
+            console.error('Error saving invoice:', error);
             alert('Failed to save invoice: ' + error.message);
         } finally {
             setIsSaving(false);
@@ -236,12 +313,12 @@ const InvoiceGenerator = () => {
         <div className="invoice-generator-container">
             <header className="dashboard-header split-header">
                 <div>
-                    <h1>Create Invoice</h1>
-                    <p className="text-muted">Select client and fill details. Calculations happen automatically.</p>
+                    <h1>{isEditing ? 'Edit Invoice' : 'Create Invoice'}</h1>
+                    <p className="text-muted">{isEditing ? 'Modify line items and records securely.' : 'Select client and fill details. Calculations happen automatically.'}</p>
                 </div>
                 <div className="header-actions">
                     <button className="btn btn-secondary" onClick={handleFinalize} disabled={isSaving || !selectedClient}>
-                        {isSaving ? 'Processing...' : <><CheckCircle size={18} /> Finalize Invoice</>}
+                        {isSaving ? 'Processing...' : (isEditing ? <><Save size={18} /> Update Invoice</> : <><CheckCircle size={18} /> Finalize Invoice</>)}
                     </button>
                     <button className="btn btn-primary" onClick={handleExportPDF} disabled={isSaving}>
                         <Download size={18} /> Export PDF
@@ -260,6 +337,7 @@ const InvoiceGenerator = () => {
                             className="form-input"
                             value={selectedClient}
                             onChange={(e) => setSelectedClient(e.target.value)}
+                            disabled={isEditing}
                         >
                             <option value="">-- Choose Existing Client --</option>
                             {clientsList.map(c => (

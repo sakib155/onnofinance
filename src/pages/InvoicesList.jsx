@@ -238,6 +238,9 @@ const InvoicesList = () => {
                                         <td>
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                 <button className="btn-icon" title="View"><Eye size={16} /></button>
+                                                <button className="btn-icon" title="Edit" onClick={() => navigate(`/invoice-edit/${invoice.id}`)}>
+                                                    <Edit size={16} />
+                                                </button>
                                                 <button
                                                     className="btn-icon"
                                                     title="Download PDF"
