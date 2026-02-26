@@ -2,10 +2,12 @@
 
 :root {
   /* Brand Colors - Inspired by the invoice */
-  --color-primary: #1A308B; /* Deep Blue from Logo/Header */
+  --color-primary: #1A308B;
+  /* Deep Blue from Logo/Header */
   --color-primary-light: #2A44B0;
   --color-primary-dark: #101E5D;
-  --color-accent: #E31837;   /* Red from 'Munshi' Logo */
+  --color-accent: #E31837;
+  /* Red from 'Munshi' Logo */
   --color-accent-light: #F7405A;
 
   /* Neutrals */
@@ -14,7 +16,7 @@
   --color-text-main: #0F172A;
   --color-text-muted: #64748B;
   --color-border: #E2E8F0;
-  
+
   /* Status Colors */
   --color-success: #10B981;
   --color-warning: #F59E0B;
@@ -38,13 +40,16 @@
 }
 
 /* Reset */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--color-bg);
@@ -59,21 +64,35 @@ html, body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   line-height: 1.2;
   color: var(--color-text-main);
 }
 
-h1 { font-size: 2.25rem; }
-h2 { font-size: 1.875rem; }
-h3 { font-size: 1.5rem; }
+h1 {
+  font-size: 2.25rem;
+}
+
+h2 {
+  font-size: 1.875rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
 
 a {
   color: var(--color-primary);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
+
 a:hover {
   color: var(--color-primary-light);
 }
@@ -98,6 +117,7 @@ a:hover {
 .dashboard-header {
   margin-bottom: 2rem;
 }
+
 .dashboard-header h1 {
   font-size: 2rem;
   font-weight: 700;
@@ -136,11 +156,13 @@ a:hover {
   color: white;
   box-shadow: var(--shadow-sm);
 }
+
 .btn-primary:hover {
   background-color: var(--color-primary-light);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md), var(--shadow-glow);
 }
+
 .btn-primary:active {
   transform: translateY(0);
 }
@@ -150,6 +172,7 @@ a:hover {
   color: var(--color-text-main);
   border: 1px solid var(--color-border);
 }
+
 .btn-secondary:hover {
   background-color: var(--color-bg);
   border-color: var(--color-text-muted);
@@ -159,6 +182,7 @@ a:hover {
   background-color: #fee2e2;
   color: var(--color-danger);
 }
+
 .btn-danger:hover {
   background-color: #fecaca;
 }
@@ -186,6 +210,7 @@ a:hover {
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   background-color: white;
 }
+
 .form-input:focus {
   outline: none;
   border-color: var(--color-primary);
@@ -197,11 +222,13 @@ a:hover {
   overflow-x: auto;
   width: 100%;
 }
+
 table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
+
 th {
   background-color: var(--color-bg);
   color: var(--color-text-muted);
@@ -212,18 +239,22 @@ th {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-border);
 }
+
 td {
   padding: 1rem;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.875rem;
   color: var(--color-text-main);
 }
+
 tr:last-child td {
   border-bottom: none;
 }
+
 tbody tr {
   transition: background-color var(--transition-fast);
 }
+
 tbody tr:hover {
   background-color: #f8fafc;
 }
@@ -233,13 +264,94 @@ tbody tr:hover {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+
+/* ============================================
+   RESPONSIVE - Full Mobile / Tablet Support
+   ============================================ */
+
+/* Tablet (768px and below) */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main-content {
+    padding: 1rem;
+    overflow-y: visible;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .glass-panel {
+    padding: 1rem;
+  }
+
+  .btn {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  td,
+  th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile (480px and below) */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 0.75rem;
+  }
+
+  .glass-panel {
+    padding: 0.875rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .form-input {
+    font-size: 1rem;
+    /* prevent iOS zoom */
+  }
+
+  td,
+  th {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
 }

@@ -294,25 +294,27 @@ const InvoiceGenerator = () => {
                     <div className="divider"></div>
 
                     <h2 className="section-title">Line Items</h2>
-                    <div className="line-items-editor">
-                        <div className="grid-header">
-                            <div>Description</div>
-                            <div>Qty</div>
-                            <div>Rate</div>
-                            <div>Amount</div>
-                            <div></div>
-                        </div>
-                        {lineItems.map(item => (
-                            <div key={item.id} className="grid-row line-item-row">
-                                <input type="text" className="form-input" placeholder="Item name" value={item.description} onChange={(e) => handleLineItemChange(item.id, 'description', e.target.value)} />
-                                <input type="number" className="form-input" value={item.quantity} onChange={(e) => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value))} />
-                                <input type="number" className="form-input" value={item.rate} onChange={(e) => handleLineItemChange(item.id, 'rate', parseFloat(e.target.value))} />
-                                <div className="calculated-amount">{(item.quantity * item.rate).toLocaleString()}</div>
-                                <button className="btn-icon text-danger" onClick={() => removeLineItem(item.id)}><Trash2 size={16} /></button>
+                    <div className="line-items-container">
+                        <div className="line-items-editor">
+                            <div className="grid-header line-item-row">
+                                <div>Description</div>
+                                <div>Qty</div>
+                                <div>Rate</div>
+                                <div>Amount</div>
+                                <div></div>
                             </div>
-                        ))}
-                        <div className="add-button-row">
-                            <button className="btn btn-secondary btn-sm" onClick={addLineItem}><Plus size={16} /> Add Item</button>
+                            {lineItems.map(item => (
+                                <div key={item.id} className="grid-row line-item-row">
+                                    <input type="text" className="form-input" placeholder="Item name" value={item.description} onChange={(e) => handleLineItemChange(item.id, 'description', e.target.value)} />
+                                    <input type="number" className="form-input" value={item.quantity} onChange={(e) => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value))} />
+                                    <input type="number" className="form-input" value={item.rate} onChange={(e) => handleLineItemChange(item.id, 'rate', parseFloat(e.target.value))} />
+                                    <div className="calculated-amount">{(item.quantity * item.rate).toLocaleString()}</div>
+                                    <button className="btn-icon text-danger" onClick={() => removeLineItem(item.id)}><Trash2 size={16} /></button>
+                                </div>
+                            ))}
+                            <div className="add-button-row">
+                                <button className="btn btn-secondary btn-sm" onClick={addLineItem}><Plus size={16} /> Add Item</button>
+                            </div>
                         </div>
                     </div>
 
@@ -325,21 +327,23 @@ const InvoiceGenerator = () => {
                     <div className="divider"></div>
 
                     <h2 className="section-title">Payments Received</h2>
-                    <div className="payments-editor">
-                        <div className="grid-header payment-grid-header">
-                            <div>Date</div>
-                            <div>Amount (BDT)</div>
-                            <div></div>
-                        </div>
-                        {payments.map(payment => (
-                            <div key={payment.id} className="grid-row payment-row">
-                                <input type="date" className="form-input" value={payment.date} onChange={(e) => handlePaymentChange(payment.id, 'date', e.target.value)} />
-                                <input type="number" className="form-input" value={payment.amount} onChange={(e) => handlePaymentChange(payment.id, 'amount', parseFloat(e.target.value))} />
-                                <button className="btn-icon text-danger" onClick={() => removePayment(payment.id)}><Trash2 size={16} /></button>
+                    <div className="payments-container">
+                        <div className="payments-editor">
+                            <div className="grid-header payment-grid-header">
+                                <div>Date</div>
+                                <div>Amount (BDT)</div>
+                                <div></div>
                             </div>
-                        ))}
-                        <div className="add-button-row">
-                            <button className="btn btn-secondary btn-sm" onClick={addPayment}><Plus size={16} /> Add Payment</button>
+                            {payments.map(payment => (
+                                <div key={payment.id} className="grid-row payment-row">
+                                    <input type="date" className="form-input" value={payment.date} onChange={(e) => handlePaymentChange(payment.id, 'date', e.target.value)} />
+                                    <input type="number" className="form-input" value={payment.amount} onChange={(e) => handlePaymentChange(payment.id, 'amount', parseFloat(e.target.value))} />
+                                    <button className="btn-icon text-danger" onClick={() => removePayment(payment.id)}><Trash2 size={16} /></button>
+                                </div>
+                            ))}
+                            <div className="add-button-row">
+                                <button className="btn btn-secondary btn-sm" onClick={addPayment}><Plus size={16} /> Add Payment</button>
+                            </div>
                         </div>
                     </div>
 

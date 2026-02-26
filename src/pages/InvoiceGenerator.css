@@ -146,3 +146,46 @@
         height: auto;
     }
 }
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+   ========================================= */
+@media (max-width: 768px) {
+    .split-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .col-span-2 {
+        grid-column: span 1;
+    }
+
+    /* Keep the form inputs readable by enabling horizontal scroll rather than squeezing */
+    .line-items-container,
+    .payments-container {
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        width: 100%;
+    }
+
+    .line-item-row,
+    .grid-header.line-item-row {
+        min-width: 500px;
+    }
+
+    .payment-row,
+    .payment-grid-header {
+        min-width: 400px;
+    }
+
+    .invoice-preview-wrapper {
+        padding: 1rem;
+        overflow-x: auto;
+        /* Allow the A4 invoice to scroll horizontally on small screens */
+    }
+}
