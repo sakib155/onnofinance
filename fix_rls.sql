@@ -1,0 +1,2 @@
+create or replace function public.is_accounts_or_admin() returns boolean language sql stable security definer as $$ select coalesce((select role from public.profiles where id = auth.uid()), 'VIEWER') in ('ADMIN','ACCOUNTS'); $$; 
+create or replace function public.is_admin() returns boolean language sql stable security definer as $$ select coalesce((select role from public.profiles where id = auth.uid()), 'VIEWER') = 'ADMIN'; $$;
