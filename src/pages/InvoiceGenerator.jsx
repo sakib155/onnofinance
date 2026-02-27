@@ -282,19 +282,23 @@ const InvoiceGenerator = () => {
                 const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
                 if (itemsError) throw itemsError;
 
-                if (payments.length > 0) {
-                    const paysToInsert = payments.map(p => ({
-                        client_id: selectedClient,
-                        invoice_id: currentInvId,
-                        payment_date: p.date,
-                        amount: p.amount,
-                        method: 'Cash'
-                    }));
-                    await supabase.from('payments').insert(paysToInsert);
-                }
-
+                // Finalize invoice FIRST so its balance is calculated and it enters the UNPAID status pool
                 const { error: finalizeError } = await supabase.rpc('finalize_invoice', { p_invoice_id: currentInvId });
                 if (finalizeError) throw finalizeError;
+
+                // Auto-apply payments to oldest invoices (which now includes this newly finalized one at the end of the line)
+                if (payments.length > 0) {
+                    for (const p of payments) {
+                        await supabase.rpc('auto_apply_payment', {
+                            p_client_id: selectedClient,
+                            p_amount: p.amount,
+                            p_date: p.date,
+                            p_method: 'Cash',
+                            p_ref: '',
+                            p_note: 'Auto-applied from Invoice Generator'
+                        });
+                    }
+                }
 
                 const { data: finalInv } = await supabase.from('invoices').select('invoice_no').eq('id', currentInvId).single();
                 if (finalInv) setInvoiceData(prev => ({ ...prev, invoiceNo: finalInv.invoice_no }));

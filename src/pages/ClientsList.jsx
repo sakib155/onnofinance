@@ -10,7 +10,17 @@ const ClientsList = () => {
     const [loading, setLoading] = useState(true);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedPaymentClient, setSelectedPaymentClient] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [paymentData, setPaymentData] = useState({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        method: 'Bank Transfer',
+        reference: '',
+        note: ''
+    });
 
     const [newClientData, setNewClientData] = useState({
         company_name: '',
@@ -83,6 +93,52 @@ const ClientsList = () => {
         }
     };
 
+    const handleOpenPaymentModal = (client) => {
+        setSelectedPaymentClient(client);
+        setPaymentData({
+            amount: '',
+            date: new Date().toISOString().split('T')[0],
+            method: 'Bank Transfer',
+            reference: '',
+            note: ''
+        });
+        setIsPaymentModalOpen(true);
+    };
+
+    const handleClosePaymentModal = () => {
+        setIsPaymentModalOpen(false);
+        setSelectedPaymentClient(null);
+    };
+
+    const handleReceivePayment = async (e) => {
+        e.preventDefault();
+        const amt = parseFloat(paymentData.amount);
+        if (!amt || amt <= 0) return alert("Please enter a valid amount greater than 0.");
+
+        setIsSubmitting(true);
+        try {
+            const { data, error } = await supabase.rpc('auto_apply_payment', {
+                p_client_id: selectedPaymentClient.client_id,
+                p_amount: amt,
+                p_date: paymentData.date,
+                p_method: paymentData.method,
+                p_ref: paymentData.reference,
+                p_note: paymentData.note
+            });
+
+            if (error) throw error;
+
+            alert('Payment received and automatically applied to invoices successfully!');
+            handleClosePaymentModal();
+            fetchClients(); // Refresh balances
+        } catch (error) {
+            console.error('Error applying payment:', error);
+            alert('Failed to apply payment. Please check your permissions or try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const filteredClients = clients.filter(c => {
         const matchesName = c.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesPhone = c.phone?.includes(searchTerm);
@@ -142,7 +198,9 @@ const ClientsList = () => {
                                                 <Link to={`/clients/${client.client_id}`} className="btn btn-secondary btn-sm" title="View Ledger">
                                                     <Activity size={14} style={{ marginRight: '4px' }} /> Ledger
                                                 </Link>
-                                                <button className="btn btn-secondary btn-sm" title="Create Invoice"><FileText size={14} style={{ marginRight: '4px' }} /> Invoice</button>
+                                                <button className="btn btn-primary btn-sm" title="Receive Payment" onClick={() => handleOpenPaymentModal(client)}>
+                                                    Receive Payment
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -244,6 +302,96 @@ const ClientsList = () => {
                                     <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
                                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                                         {isSubmitting ? 'Saving...' : 'Save Client'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receive Payment Modal */}
+            {isPaymentModalOpen && selectedPaymentClient && (
+                <div className="modal-overlay" onClick={handleClosePaymentModal}>
+                    <div className="modal-container" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Receive Auto-Payment</h2>
+                            <button className="btn-icon" onClick={handleClosePaymentModal}><X size={20} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <form onSubmit={handleReceivePayment}>
+                                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: 'var(--radius-md)' }}>
+                                    <p style={{ margin: 0, fontWeight: '500' }}>Client: {selectedPaymentClient.company_name}</p>
+                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)' }}>
+                                        Current Due: <strong>৳ {parseFloat(selectedPaymentClient.current_due || 0).toLocaleString()}</strong>
+                                    </p>
+                                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                                        * This lump sum payment will automatically be applied to the oldest unpaid invoices until the amount is exhausted.
+                                    </p>
+                                </div>
+
+                                <div className="form-grid-2">
+                                    <div className="form-group mb-4">
+                                        <label className="form-label">Payment Amount (BDT) *</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={paymentData.amount}
+                                            onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                                            step="0.01"
+                                            min="0.01"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group mb-4">
+                                        <label className="form-label">Payment Date *</label>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            value={paymentData.date}
+                                            onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group mb-4">
+                                        <label className="form-label">Payment Method *</label>
+                                        <select
+                                            className="form-input"
+                                            value={paymentData.method}
+                                            onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
+                                            required
+                                        >
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Cash">Cash</option>
+                                            <option value="Cheque">Cheque</option>
+                                            <option value="Mobile Banking">Mobile Banking</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group mb-4">
+                                        <label className="form-label">Reference ID (Txn/Cheque No)</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={paymentData.reference}
+                                            onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group mb-4">
+                                    <label className="form-label">Internal Note</label>
+                                    <textarea
+                                        className="form-input"
+                                        rows="2"
+                                        value={paymentData.note}
+                                        onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
+                                    ></textarea>
+                                </div>
+
+                                <div className="modal-actions" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button type="button" className="btn btn-secondary" onClick={handleClosePaymentModal}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Processing...' : 'Apply Payment'}
                                     </button>
                                 </div>
                             </form>

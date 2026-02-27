@@ -527,3 +527,67 @@ drop policy if exists "audit_read_admin_only" on public.audit_logs;
 create policy "audit_read_admin_only" on public.audit_logs for select using (public.is_admin());
 drop policy if exists "audit_insert_accounts_admin" on public.audit_logs;
 create policy "audit_insert_accounts_admin" on public.audit_logs for insert with check (public.is_accounts_or_admin());
+
+-- =========================================================
+-- ADVANCED FEATURES
+-- =========================================================
+
+-- Receive a lump-sum payment and auto-apply to oldest unpaid invoices
+create or replace function public.auto_apply_payment(
+  p_client_id uuid,
+  p_amount numeric,
+  p_date date,
+  p_method text,
+  p_ref text,
+  p_note text
+)
+returns numeric
+language plpgsql
+security definer
+as $$
+declare
+  v_remaining numeric := p_amount;
+  v_invoice record;
+  v_apply_amount numeric;
+begin
+  if not public.is_accounts_or_admin() then
+    raise exception 'Not allowed';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'Amount must be greater than 0';
+  end if;
+
+  -- 1. Get all unpaid/partial/overdue invoices for this client, ordered by date ASC (oldest first)
+  for v_invoice in
+    select id, balance_due 
+    from public.invoices
+    where client_id = p_client_id
+      and status in ('UNPAID', 'PARTIAL', 'OVERDUE')
+      and balance_due > 0
+    order by invoice_date asc, created_at asc
+  loop
+    exit when v_remaining <= 0;
+
+    -- Calculate how much to apply to this invoice
+    v_apply_amount := least(v_remaining, v_invoice.balance_due);
+
+    if v_apply_amount > 0 then
+      -- Insert payment record for this specific invoice
+      -- The `after_payments_change` trigger will automatically call `recalc_invoice` 
+      -- for this invoice, updating its total paid, balance, and status.
+      insert into public.payments(
+        client_id, invoice_id, payment_date, amount, method, reference, note, created_by
+      ) values (
+        p_client_id, v_invoice.id, p_date, v_apply_amount, p_method, p_ref, p_note, auth.uid()
+      );
+
+      -- Deduct from remaining
+      v_remaining := v_remaining - v_apply_amount;
+    end if;
+  end loop;
+
+  -- Return the amount that was NOT applied (e.g. overpayment).
+  return v_remaining;
+end;
+$$;
