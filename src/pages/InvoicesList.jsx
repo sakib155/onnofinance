@@ -110,6 +110,19 @@ const InvoicesList = () => {
             const { data: items } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
             const { data: payments } = await supabase.from('payments').select('*').eq('invoice_id', invoice.id);
 
+            // Also fetch the last 3 payments for the mini-ledger if there's a previous balance
+            const prevDue = parseFloat(invoice.previous_due || 0);
+            let recentPayments = [];
+            if (prevDue > 0) {
+                const { data: recents } = await supabase
+                    .from('payments')
+                    .select('payment_date, amount, method, reference')
+                    .eq('client_id', invoice.client_id)
+                    .order('payment_date', { ascending: false })
+                    .limit(3);
+                if (recents) recentPayments = recents;
+            }
+
             const mappedData = {
                 invoiceNo: invoice.invoice_no,
                 invoiceDate: invoice.invoice_date,
@@ -136,7 +149,6 @@ const InvoicesList = () => {
             })) : [];
 
             // Compute totals exactly as they were captured during the draft creation
-            const prevDue = parseFloat(invoice.previous_due || 0);
             const subtotal = parseFloat(invoice.subtotal || 0);
             const totalPayments = parseFloat(invoice.paid_total || 0);
             const outstandingDue = parseFloat(invoice.balance_due || 0);
@@ -148,7 +160,8 @@ const InvoicesList = () => {
                 items: mappedItems,
                 previousDue: prevDue,
                 payments: mappedPayments,
-                totals: totals
+                totals: totals,
+                recentPayments: recentPayments
             });
 
         } catch (error) {
@@ -275,6 +288,7 @@ const InvoicesList = () => {
                             previousDue={pdfData.previousDue}
                             payments={pdfData.payments}
                             totals={pdfData.totals}
+                            recentPayments={pdfData.recentPayments}
                         />
                     </div>
                 </div>

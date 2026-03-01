@@ -19,6 +19,8 @@ const InvoiceGenerator = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [clientsList, setClientsList] = useState([]);
     const [selectedClient, setSelectedClient] = useState('');
+    const [previousDue, setPreviousDue] = useState(0);
+    const [recentPayments, setRecentPayments] = useState([]);
 
     const [invoiceData, setInvoiceData] = useState({
         invoiceNo: 'DRAFT',
@@ -32,7 +34,6 @@ const InvoiceGenerator = () => {
     });
 
     const [lineItems, setLineItems] = useState([{ ...initialLineItem, id: Date.now() }]);
-    const [previousDue, setPreviousDue] = useState(0);
     const [payments, setPayments] = useState([]);
     const [totals, setTotals] = useState({ subtotal: 0, totalPayments: 0, outstandingDue: 0 });
 
@@ -100,6 +101,19 @@ const InvoiceGenerator = () => {
             if (!error && data !== null) {
                 setPreviousDue(parseFloat(data));
             }
+
+            // Also fetch the last 3 payments for the mini-ledger if there's a balance
+            const { data: recents, error: recErr } = await supabase
+                .from('payments')
+                .select('payment_date, amount, method, reference')
+                .eq('client_id', clientId)
+                .order('payment_date', { ascending: false })
+                .limit(3);
+
+            if (!recErr && recents) {
+                setRecentPayments(recents);
+            }
+
         } catch (error) {
             console.error('Error fetching balance:', error);
         }
@@ -433,16 +447,18 @@ const InvoiceGenerator = () => {
 
                 {/* Live Preview Panel */}
                 <section className="invoice-preview-wrapper">
-                    <div className="preview-sticky-container" ref={previewRef}>
-                        <InvoicePreview
-                            data={invoiceData}
-                            items={lineItems}
-                            previousDue={previousDue}
-                            payments={payments}
-                            totals={totals}
-                        />
-                    </div>
-                </section>
+                    <div className="preview-scale-wrapper">
+                        <div ref={previewRef}>
+                            <InvoicePreview
+                                data={invoiceData}
+                                items={lineItems}
+                                previousDue={previousDue}
+                                payments={payments}
+                                totals={totals}
+                                recentPayments={recentPayments}
+                            />
+                        </div>
+                    </div></section>
             </div>
         </div>
     );

@@ -1,7 +1,7 @@
 import React from 'react';
 import './InvoicePreview.css';
 
-const InvoicePreview = ({ data, items, previousDue, payments, totals }) => {
+const InvoicePreview = ({ data, items, previousDue, payments, totals, recentPayments = [] }) => {
     return (
         <div id="invoice-a4" className="a4">
             {/* Full-width company header */}
@@ -96,6 +96,30 @@ const InvoicePreview = ({ data, items, previousDue, payments, totals }) => {
             <div className="dueLine">
                 <div className="dueText">Total Outstanding Due: <b>BDT {parseFloat(totals.outstandingDue).toLocaleString()}</b></div>
             </div>
+
+            {recentPayments && recentPayments.length > 0 && parseFloat(previousDue) > 0 && (
+                <div className="recentPayments" style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '0.85rem' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '8px', color: '#374151' }}>Recent Account Payments (Mini-Ledger)</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid #d1d5db', color: '#6b7280', textAlign: 'left' }}>
+                                <th style={{ padding: '4px 0' }}>Date</th>
+                                <th style={{ padding: '4px 0' }}>Method</th>
+                                <th style={{ padding: '4px 0', textAlign: 'right' }}>Amount (BDT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {recentPayments.map((rp, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '4px 0' }}>{new Date(rp.payment_date).toLocaleDateString()}</td>
+                                    <td style={{ padding: '4px 0' }}>{rp.method || 'Cash'} {rp.reference ? `(${rp.reference})` : ''}</td>
+                                    <td style={{ padding: '4px 0', textAlign: 'right' }}>{parseFloat(rp.amount).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             <div className="notes">
                 <div className="blockTitle">Notes &amp; Payment Instructions</div>
