@@ -64,16 +64,21 @@ const InvoicesList = () => {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
             });
 
             element.style.height = originalStyle.height;
             element.style.overflow = originalStyle.overflow;
 
             const imgData = canvas.toDataURL('image/jpeg', 0.98);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
+            
+            const pdfWidth = 210; // A4 width in mm
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            // Create a PDF with dynamic height to prevent full pages from being truncated
+            const pdf = new jsPDF('p', 'mm', [pdfWidth, Math.max(pdfHeight, 297)]);
 
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
 

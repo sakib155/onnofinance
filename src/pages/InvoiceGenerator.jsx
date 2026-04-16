@@ -194,7 +194,9 @@ const InvoiceGenerator = () => {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
             });
 
             // Restore style
@@ -202,9 +204,12 @@ const InvoiceGenerator = () => {
             element.style.overflow = originalStyle.overflow;
 
             const imgData = canvas.toDataURL('image/jpeg', 0.98);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
+            
+            const pdfWidth = 210; // A4 width in mm
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            // Generate PDF with custom height to fit the whole canvas (minimum A4 height 297)
+            const pdf = new jsPDF('p', 'mm', [pdfWidth, Math.max(pdfHeight, 297)]);
 
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
 
