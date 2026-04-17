@@ -65,8 +65,8 @@ const InvoicesList = () => {
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight
+                width: 794,
+                windowWidth: 794
             });
 
             element.style.height = originalStyle.height;

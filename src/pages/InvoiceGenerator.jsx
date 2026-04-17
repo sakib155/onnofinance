@@ -195,8 +195,8 @@ const InvoiceGenerator = () => {
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight
+                width: 794,
+                windowWidth: 794
             });
 
             // Restore style
