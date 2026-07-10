@@ -6,6 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'public-anon-k
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-        storageKey: 'onno-finance-auth-v2'
+        storageKey: 'onno-finance-auth-v2',
+        navigatorLock: false
     }
 });

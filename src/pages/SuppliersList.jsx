@@ -1,50 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, FileText, Activity, X, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Activity, X, Edit, Trash2, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
-import './ClientsList.css';
 
-const ClientsList = () => {
-    const [clients, setClients] = useState([]);
+const SuppliersList = () => {
+    const [suppliers, setSuppliers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingClientId, setEditingClientId] = useState(null);
+    const [editingSupplierId, setEditingSupplierId] = useState(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [selectedPaymentClient, setSelectedPaymentClient] = useState(null);
+    const [selectedPaymentSupplier, setSelectedPaymentSupplier] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [paymentData, setPaymentData] = useState({
         amount: '',
         date: new Date().toISOString().split('T')[0],
-        method: 'Bank Transfer',
+        method: 'Cash',
         reference: '',
         note: ''
     });
 
-    const [newClientData, setNewClientData] = useState({
+    const [newSupplierData, setNewSupplierData] = useState({
         company_name: '',
         contact_person: '',
         phone: '',
         email: '',
         address: '',
-        payment_terms_days: 15,
         opening_due: 0
     });
 
     useEffect(() => {
-        fetchClients();
+        fetchSuppliers();
     }, []);
 
-    const fetchClients = async () => {
+    const fetchSuppliers = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.from('v_client_due').select('*');
+            const { data, error } = await supabase.from('v_supplier_due').select('*');
             if (error) throw error;
-            if (data) setClients(data);
+            if (data) setSuppliers(data);
         } catch (error) {
-            console.error('Error fetching clients:', error);
+            console.error('Error fetching suppliers:', error);
         } finally {
             setLoading(false);
         }
@@ -53,107 +51,102 @@ const ClientsList = () => {
     const handleOpenModal = () => setIsAddModalOpen(true);
     const handleCloseModal = () => {
         setIsAddModalOpen(false);
-        setEditingClientId(null);
-        setNewClientData({
+        setEditingSupplierId(null);
+        setNewSupplierData({
             company_name: '',
             contact_person: '',
             phone: '',
             email: '',
             address: '',
-            payment_terms_days: 15,
             opening_due: 0
         });
     };
 
-    const handleEditClick = async (clientId) => {
+    const handleEditClick = async (supplierId) => {
         try {
-            const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
+            const { data, error } = await supabase.from('suppliers').select('*').eq('id', supplierId).single();
             if (error) throw error;
-            setNewClientData({
+            setNewSupplierData({
                 company_name: data.company_name || '',
                 contact_person: data.contact_person || '',
                 phone: data.phone || '',
                 email: data.email || '',
                 address: data.address || '',
-                payment_terms_days: data.payment_terms_days || 15,
                 opening_due: data.opening_due || 0
             });
-            setEditingClientId(clientId);
+            setEditingSupplierId(supplierId);
             setIsAddModalOpen(true);
         } catch (error) {
-            console.error('Error fetching client details:', error);
-            alert('Failed to fetch client details.');
+            console.error('Error fetching supplier details:', error);
+            alert('Failed to fetch supplier details.');
         }
     };
 
-    const handleDeleteClient = async (clientId) => {
-        if (!window.confirm("Are you sure you want to delete this client? This action cannot be undone and will fail if the client has associated invoices or payments.")) return;
+    const handleDeleteSupplier = async (supplierId) => {
+        if (!window.confirm("Are you sure you want to delete this supplier? This action cannot be undone and will fail if they have associated purchases or payments.")) return;
         
         try {
-            const { error } = await supabase.from('clients').delete().eq('id', clientId);
+            const { error } = await supabase.from('suppliers').delete().eq('id', supplierId);
             if (error) throw error;
             
-            alert('Client deleted successfully.');
-            fetchClients();
+            alert('Supplier deleted successfully.');
+            fetchSuppliers();
         } catch (error) {
-            console.error('Error deleting client:', error);
+            console.error('Error deleting supplier:', error);
             if (error.code === '23503') {
-                alert('Cannot delete this client because they have associated invoices or payments.');
+                alert('Cannot delete this supplier because they have associated paddy purchases or payment logs.');
             } else {
-                alert('Failed to delete client.');
+                alert('Failed to delete supplier.');
             }
         }
     };
 
-    const handleAddClient = async (e) => {
+    const handleAddSupplier = async (e) => {
         e.preventDefault();
-        if (!newClientData.company_name) return alert("Company name is required.");
+        if (!newSupplierData.company_name) return alert("Company name is required.");
 
         setIsSubmitting(true);
         try {
-            if (editingClientId) {
-                const { error } = await supabase.from('clients').update({
-                    company_name: newClientData.company_name,
-                    contact_person: newClientData.contact_person,
-                    phone: newClientData.phone,
-                    email: newClientData.email,
-                    address: newClientData.address,
-                    payment_terms_days: parseInt(newClientData.payment_terms_days) || 15,
-                    opening_due: parseFloat(newClientData.opening_due) || 0
-                }).eq('id', editingClientId);
+            if (editingSupplierId) {
+                const { error } = await supabase.from('suppliers').update({
+                    company_name: newSupplierData.company_name,
+                    contact_person: newSupplierData.contact_person,
+                    phone: newSupplierData.phone,
+                    email: newSupplierData.email,
+                    address: newSupplierData.address,
+                    opening_due: parseFloat(newSupplierData.opening_due) || 0
+                }).eq('id', editingSupplierId);
                 if (error) throw error;
-                alert('Client updated successfully.');
+                alert('Supplier updated successfully.');
             } else {
-                const { error } = await supabase.from('clients').insert([{
-                    company_name: newClientData.company_name,
-                    contact_person: newClientData.contact_person,
-                    phone: newClientData.phone,
-                    email: newClientData.email,
-                    address: newClientData.address,
-                    payment_terms_days: parseInt(newClientData.payment_terms_days) || 15,
-                    opening_due: parseFloat(newClientData.opening_due) || 0
+                const { error } = await supabase.from('suppliers').insert([{
+                    company_name: newSupplierData.company_name,
+                    contact_person: newSupplierData.contact_person,
+                    phone: newSupplierData.phone,
+                    email: newSupplierData.email,
+                    address: newSupplierData.address,
+                    opening_due: parseFloat(newSupplierData.opening_due) || 0
                 }]);
                 if (error) throw error;
-                alert('Client added successfully.');
+                alert('Supplier added successfully.');
             }
 
             handleCloseModal();
-            fetchClients(); // Refresh list
-
+            fetchSuppliers();
         } catch (error) {
-            console.error('Error saving client:', error);
-            alert('Failed to save client. Check console for details.');
+            console.error('Error saving supplier:', error);
+            alert('Failed to save supplier. Check console for details.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleOpenPaymentModal = (client) => {
-        setSelectedPaymentClient(client);
+    const handleOpenPaymentModal = (supplier) => {
+        setSelectedPaymentSupplier(supplier);
         setPaymentData({
             amount: '',
             date: new Date().toISOString().split('T')[0],
-            method: 'Bank Transfer',
+            method: 'Cash',
             reference: '',
             note: ''
         });
@@ -162,41 +155,41 @@ const ClientsList = () => {
 
     const handleClosePaymentModal = () => {
         setIsPaymentModalOpen(false);
-        setSelectedPaymentClient(null);
+        setSelectedPaymentSupplier(null);
     };
 
-    const handleReceivePayment = async (e) => {
+    const handleSendPayment = async (e) => {
         e.preventDefault();
         const amt = parseFloat(paymentData.amount);
         if (!amt || amt <= 0) return alert("Please enter a valid amount greater than 0.");
 
         setIsSubmitting(true);
         try {
-            const { data, error } = await supabase.rpc('auto_apply_payment', {
-                p_client_id: selectedPaymentClient.client_id,
-                p_amount: amt,
-                p_date: paymentData.date,
-                p_method: paymentData.method,
-                p_ref: paymentData.reference,
-                p_note: paymentData.note
-            });
+            const { error } = await supabase.from('supplier_payments').insert([{
+                supplier_id: selectedPaymentSupplier.supplier_id,
+                amount: amt,
+                payment_date: paymentData.date,
+                method: paymentData.method,
+                reference: paymentData.reference,
+                note: paymentData.note
+            }]);
 
             if (error) throw error;
 
-            alert('Payment received and automatically applied to invoices successfully!');
+            alert('Payment recorded successfully!');
             handleClosePaymentModal();
-            fetchClients(); // Refresh balances
+            fetchSuppliers();
         } catch (error) {
-            console.error('Error applying payment:', error);
-            alert('Failed to apply payment. Please check your permissions or try again.');
+            console.error('Error logging payment:', error);
+            alert('Failed to log payment. Please check database permissions.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const filteredClients = clients.filter(c => {
-        const matchesName = c.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesPhone = c.phone?.includes(searchTerm);
+    const filteredSuppliers = suppliers.filter(s => {
+        const matchesName = s.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesPhone = s.phone?.includes(searchTerm);
         return matchesName || matchesPhone;
     });
 
@@ -204,11 +197,11 @@ const ClientsList = () => {
         <div className="dashboard-container">
             <header className="dashboard-header split-header">
                 <div>
-                    <h1>Clients</h1>
-                    <p className="text-muted">Manage your client ledger and settings.</p>
+                    <h1>Paddy Suppliers</h1>
+                    <p className="text-muted">Manage paddy brokers, farms, and raw material supplier accounts.</p>
                 </div>
                 <button className="btn btn-primary" onClick={handleOpenModal}>
-                    <Plus size={18} /> Add Client
+                    <Plus size={18} /> Add Supplier
                 </button>
             </header>
 
@@ -219,7 +212,7 @@ const ClientsList = () => {
                         <input
                             type="text"
                             className="form-input"
-                            placeholder="Search clients..."
+                            placeholder="Search suppliers..."
                             style={{ paddingLeft: '2.5rem' }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -231,35 +224,35 @@ const ClientsList = () => {
                     <table>
                         <thead>
                             <tr>
-                                <th>Company Name</th>
+                                <th>Supplier Name</th>
                                 <th>Contact Person</th>
                                 <th>Phone</th>
-                                <th className="text-right">Current Due</th>
+                                <th className="text-right">Outstandings (We Owe)</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredClients.map(client => {
+                            {filteredSuppliers.map(sup => {
                                 return (
-                                    <tr key={client.client_id}>
-                                        <td className="font-medium">{client.company_name}</td>
-                                        <td>{client.contact_person || '-'}</td>
-                                        <td>{client.phone || '-'}</td>
-                                        <td className="font-medium text-right" style={{ color: parseFloat(client.current_due) > 0 ? 'var(--color-danger)' : 'inherit' }}>
-                                            ৳ {parseFloat(client.current_due || 0).toLocaleString()}
+                                    <tr key={sup.supplier_id}>
+                                        <td className="font-medium">{sup.company_name}</td>
+                                        <td>{sup.contact_person || '-'}</td>
+                                        <td>{sup.phone || '-'}</td>
+                                        <td className="font-medium text-right" style={{ color: parseFloat(sup.current_due) > 0 ? 'var(--color-danger)' : 'inherit' }}>
+                                            ৳ {parseFloat(sup.current_due || 0).toLocaleString()}
                                         </td>
                                         <td>
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <Link to={`/clients/${client.client_id}`} className="btn btn-secondary btn-sm" title="View Ledger">
+                                                <Link to={`/suppliers/${sup.supplier_id}`} className="btn btn-secondary btn-sm" title="View Ledger">
                                                     <Activity size={14} style={{ marginRight: '4px' }} /> Ledger
                                                 </Link>
-                                                <button className="btn btn-primary btn-sm" title="Receive Payment" onClick={() => handleOpenPaymentModal(client)}>
-                                                    Receive Payment
+                                                <button className="btn btn-primary btn-sm" title="Record Payment" onClick={() => handleOpenPaymentModal(sup)}>
+                                                    Record Payment
                                                 </button>
-                                                <button className="btn-icon" title="Edit Client" onClick={() => handleEditClick(client.client_id)}>
+                                                <button className="btn-icon" title="Edit Supplier" onClick={() => handleEditClick(sup.supplier_id)}>
                                                     <Edit size={16} />
                                                 </button>
-                                                <button className="btn-icon text-danger" title="Delete Client" onClick={() => handleDeleteClient(client.client_id)}>
+                                                <button className="btn-icon text-danger" title="Delete Supplier" onClick={() => handleDeleteSupplier(sup.supplier_id)}>
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -267,9 +260,9 @@ const ClientsList = () => {
                                     </tr>
                                 );
                             })}
-                            {filteredClients.length === 0 && (
+                            {filteredSuppliers.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No clients found matching your search.</td>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No suppliers found.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -277,23 +270,23 @@ const ClientsList = () => {
                 </div>
             </section>
 
-            {/* Add Client Modal */}
+            {/* Add/Edit Modal */}
             {isAddModalOpen && (
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-container" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>{editingClientId ? 'Edit Client' : 'Add New Client'}</h2>
+                            <h2>{editingSupplierId ? 'Edit Supplier' : 'Add New Supplier'}</h2>
                             <button className="btn-icon" onClick={handleCloseModal}><X size={20} /></button>
                         </div>
                         <div className="modal-body">
-                            <form onSubmit={handleAddClient}>
+                            <form onSubmit={handleAddSupplier}>
                                 <div className="form-group mb-4">
-                                    <label className="form-label">Company Name *</label>
+                                    <label className="form-label">Supplier Company / Name *</label>
                                     <input
                                         type="text"
                                         className="form-input"
-                                        value={newClientData.company_name}
-                                        onChange={(e) => setNewClientData({ ...newClientData, company_name: e.target.value })}
+                                        value={newSupplierData.company_name}
+                                        onChange={(e) => setNewSupplierData({ ...newSupplierData, company_name: e.target.value })}
                                         required
                                     />
                                 </div>
@@ -303,8 +296,8 @@ const ClientsList = () => {
                                         <input
                                             type="text"
                                             className="form-input"
-                                            value={newClientData.contact_person}
-                                            onChange={(e) => setNewClientData({ ...newClientData, contact_person: e.target.value })}
+                                            value={newSupplierData.contact_person}
+                                            onChange={(e) => setNewSupplierData({ ...newSupplierData, contact_person: e.target.value })}
                                         />
                                     </div>
                                     <div className="form-group mb-4">
@@ -312,8 +305,8 @@ const ClientsList = () => {
                                         <input
                                             type="text"
                                             className="form-input"
-                                            value={newClientData.phone}
-                                            onChange={(e) => setNewClientData({ ...newClientData, phone: e.target.value })}
+                                            value={newSupplierData.phone}
+                                            onChange={(e) => setNewSupplierData({ ...newSupplierData, phone: e.target.value })}
                                         />
                                     </div>
                                     <div className="form-group mb-4">
@@ -321,18 +314,18 @@ const ClientsList = () => {
                                         <input
                                             type="email"
                                             className="form-input"
-                                            value={newClientData.email}
-                                            onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
+                                            value={newSupplierData.email}
+                                            onChange={(e) => setNewSupplierData({ ...newSupplierData, email: e.target.value })}
                                         />
                                     </div>
                                     <div className="form-group mb-4">
-                                        <label className="form-label">Payment Terms (Days)</label>
+                                        <label className="form-label">Opening Balance We Owe (BDT)</label>
                                         <input
                                             type="number"
                                             className="form-input"
-                                            value={newClientData.payment_terms_days}
-                                            onChange={(e) => setNewClientData({ ...newClientData, payment_terms_days: e.target.value })}
-                                            min="0"
+                                            value={newSupplierData.opening_due}
+                                            onChange={(e) => setNewSupplierData({ ...newSupplierData, opening_due: e.target.value })}
+                                            step="0.01"
                                         />
                                     </div>
                                 </div>
@@ -342,27 +335,15 @@ const ClientsList = () => {
                                     <textarea
                                         className="form-input"
                                         rows="2"
-                                        value={newClientData.address}
-                                        onChange={(e) => setNewClientData({ ...newClientData, address: e.target.value })}
+                                        value={newSupplierData.address}
+                                        onChange={(e) => setNewSupplierData({ ...newSupplierData, address: e.target.value })}
                                     ></textarea>
-                                </div>
-
-                                <div className="form-group mb-4">
-                                    <label className="form-label">Opening Due (BDT)</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        value={newClientData.opening_due}
-                                        onChange={(e) => setNewClientData({ ...newClientData, opening_due: e.target.value })}
-                                        step="0.01"
-                                    />
-                                    <small className="help-text">Any balance owed before using this system.</small>
                                 </div>
 
                                 <div className="modal-actions" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                                     <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
                                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Saving...' : (editingClientId ? 'Update Client' : 'Save Client')}
+                                        {isSubmitting ? 'Saving...' : 'Save Supplier'}
                                     </button>
                                 </div>
                             </form>
@@ -371,23 +352,20 @@ const ClientsList = () => {
                 </div>
             )}
 
-            {/* Receive Payment Modal */}
-            {isPaymentModalOpen && selectedPaymentClient && (
+            {/* Record Payment Modal */}
+            {isPaymentModalOpen && selectedPaymentSupplier && (
                 <div className="modal-overlay" onClick={handleClosePaymentModal}>
                     <div className="modal-container" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>Receive Auto-Payment</h2>
+                            <h2>Log Supplier Payment</h2>
                             <button className="btn-icon" onClick={handleClosePaymentModal}><X size={20} /></button>
                         </div>
                         <div className="modal-body">
-                            <form onSubmit={handleReceivePayment}>
+                            <form onSubmit={handleSendPayment}>
                                 <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: 'var(--radius-md)' }}>
-                                    <p style={{ margin: 0, fontWeight: '500' }}>Client: {selectedPaymentClient.company_name}</p>
+                                    <p style={{ margin: 0, fontWeight: '500' }}>Supplier: {selectedPaymentSupplier.company_name}</p>
                                     <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)' }}>
-                                        Current Due: <strong>৳ {parseFloat(selectedPaymentClient.current_due || 0).toLocaleString()}</strong>
-                                    </p>
-                                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                                        * This lump sum payment will automatically be applied to the oldest unpaid invoices until the amount is exhausted.
+                                        Outstanding Due: <strong>৳ {parseFloat(selectedPaymentSupplier.current_due || 0).toLocaleString()}</strong>
                                     </p>
                                 </div>
 
@@ -422,10 +400,10 @@ const ClientsList = () => {
                                             onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
                                             required
                                         >
-                                            <option value="Bank Transfer">Bank Transfer</option>
                                             <option value="Cash">Cash</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
                                             <option value="Cheque">Cheque</option>
-                                            <option value="Mobile Banking">Mobile Banking</option>
+                                            <option value="Bkash/Nagad">Mobile Banking (MFS)</option>
                                         </select>
                                     </div>
                                     <div className="form-group mb-4">
@@ -440,7 +418,7 @@ const ClientsList = () => {
                                 </div>
 
                                 <div className="form-group mb-4">
-                                    <label className="form-label">Internal Note</label>
+                                    <label className="form-label">Payment Note</label>
                                     <textarea
                                         className="form-input"
                                         rows="2"
@@ -452,7 +430,7 @@ const ClientsList = () => {
                                 <div className="modal-actions" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                                     <button type="button" className="btn btn-secondary" onClick={handleClosePaymentModal}>Cancel</button>
                                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Processing...' : 'Apply Payment'}
+                                        {isSubmitting ? 'Recording...' : 'Record Payment'}
                                     </button>
                                 </div>
                             </form>
@@ -464,4 +442,4 @@ const ClientsList = () => {
     );
 };
 
-export default ClientsList;
+export default SuppliersList;

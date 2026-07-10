@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, LogOut, Users, Receipt, CreditCard, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, LogOut, Users, Receipt, CreditCard, Shield, Package, UserCheck, Truck, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
 
@@ -11,20 +11,28 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo d-flex align-items-center gap-2">
-          {/* A simple placeholder logo using CSS shapes */}
           <div className="logo-icon">M</div>
-          <span className="logo-text">Finance<span className="text-primary">Portal</span></span>
+          <span className="logo-text">RiceMill<span className="text-primary">Finance</span></span>
         </div>
       </div>
 
       <nav className="sidebar-nav">
         <ul className="nav-list">
+          <div className="sidebar-section-title">Main</div>
           <li className="nav-item">
             <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </NavLink>
           </li>
+          <li className="nav-item">
+            <NavLink to="/inventory" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <Package size={20} />
+              <span>Inventory</span>
+            </NavLink>
+          </li>
+
+          <div className="sidebar-section-title">Sales (Revenue)</div>
           <li className="nav-item">
             <NavLink to="/clients" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Users size={20} />
@@ -49,8 +57,38 @@ const Sidebar = () => {
               <span>Payments</span>
             </NavLink>
           </li>
+
+          <div className="sidebar-section-title">Procurement (Cost)</div>
+          <li className="nav-item">
+            <NavLink to="/suppliers" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <UserCheck size={20} />
+              <span>Suppliers</span>
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/paddy-purchases" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <Truck size={20} />
+              <span>Purchases</span>
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/production-batches" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <RefreshCw size={20} />
+              <span>Production & Sorting</span>
+            </NavLink>
+          </li>
+
+          <div className="sidebar-section-title">Expenses</div>
+          <li className="nav-item">
+            <NavLink to="/expenses" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <FileText size={20} />
+              <span>Expenses</span>
+            </NavLink>
+          </li>
+
+          <div className="sidebar-section-title" style={{ marginTop: 'auto' }}>System</div>
           {isAdmin && (
-            <li className="nav-item mt-auto">
+            <li className="nav-item">
               <NavLink to="/team" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
                 <Shield size={20} />
                 <span>Team Access</span>

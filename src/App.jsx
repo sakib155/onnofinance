@@ -7,9 +7,15 @@ import ClientsList from './pages/ClientsList';
 import ClientLedger from './pages/ClientLedger';
 import InvoicesList from './pages/InvoicesList';
 import PaymentsList from './pages/PaymentsList';
+import ExpensesList from './pages/ExpensesList';
+import InventoryList from './pages/InventoryList';
 import Settings from './pages/Settings';
 import TeamUsers from './pages/TeamUsers';
 import Login from './pages/Login';
+import SuppliersList from './pages/SuppliersList';
+import SupplierLedger from './pages/SupplierLedger';
+import PaddyPurchases from './pages/PaddyPurchases';
+import ProductionBatches from './pages/ProductionBatches';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 
@@ -40,6 +46,13 @@ function App() {
                     <Route path="/clients/:id" element={<ClientLedger />} />
                     <Route path="/invoices" element={<InvoicesList />} />
                     <Route path="/payments" element={<PaymentsList />} />
+                    <Route path="/expenses" element={<ExpensesList />} />
+                    <Route path="/inventory" element={<InventoryList />} />
+                    <Route path="/suppliers" element={<SuppliersList />} />
+                    <Route path="/suppliers/:id" element={<SupplierLedger />} />
+                    <Route path="/paddy-purchases" element={<PaddyPurchases />} />
+                    <Route path="/production-batches" element={<ProductionBatches />} />
+                    <Route path="/milling-logs" element={<Navigate to="/production-batches" replace />} />
                     <Route path="/invoice-generator" element={<InvoiceGenerator />} />
                     <Route path="/invoice-edit/:id" element={<InvoiceGenerator />} />
                     <Route path="/settings" element={<Settings />} />

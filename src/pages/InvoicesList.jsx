@@ -27,7 +27,8 @@ const InvoicesList = () => {
                 .from('invoices')
                 .select(`
                     *,
-                    clients ( company_name, phone, address )
+                    clients ( company_name, phone, address ),
+                    expenses ( amount )
                 `)
                 .order('created_at', { ascending: false });
 
@@ -75,12 +76,23 @@ const InvoicesList = () => {
             const imgData = canvas.toDataURL('image/jpeg', 0.98);
             
             const pdfWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             
-            // Create a PDF with dynamic height to prevent full pages from being truncated
-            const pdf = new jsPDF('p', 'mm', [pdfWidth, Math.max(pdfHeight, 297)]);
+            const pdf = new jsPDF('p', 'mm', [pdfWidth, pageHeight]);
 
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            let position = 0;
+            let heightLeft = pdfHeight;
+
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+                position -= pageHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+                heightLeft -= pageHeight;
+            }
 
             const rawName = pdfData.data.invoiceNo || 'invoice';
             const safeName = rawName.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -233,6 +245,7 @@ const InvoicesList = () => {
                                 <th>Date</th>
                                 <th>Due Date</th>
                                 <th className="text-right">Total</th>
+                                <th className="text-right">Deal Profit</th>
                                 <th className="text-right">Balance Due</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -240,13 +253,27 @@ const InvoicesList = () => {
                         </thead>
                         <tbody>
                             {filteredInvoices.map(invoice => {
+                                const totalSales = parseFloat(invoice.invoice_total || 0);
+                                const totalCosts = (invoice.expenses || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+                                const dealProfit = totalSales - totalCosts;
+
                                 return (
                                     <tr key={invoice.id}>
                                         <td className="font-medium">{invoice.invoice_no}</td>
                                         <td>{invoice.clients?.company_name}</td>
                                         <td>{invoice.invoice_date}</td>
                                         <td>{invoice.due_date}</td>
-                                        <td className="text-right">৳ {parseFloat(invoice.invoice_total || 0).toLocaleString()}</td>
+                                        <td className="text-right">৳ {totalSales.toLocaleString()}</td>
+                                        <td className="text-right">
+                                            <div style={{ color: dealProfit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+                                                ৳ {dealProfit.toLocaleString()}
+                                            </div>
+                                            {totalCosts > 0 && (
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                                    Costs: ৳ {totalCosts.toLocaleString()}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="text-right font-medium text-danger">৳ {parseFloat(invoice.balance_due || 0).toLocaleString()}</td>
                                         <td>
                                             <span className={`status-badge ${invoice.status.toLowerCase()}`}>
