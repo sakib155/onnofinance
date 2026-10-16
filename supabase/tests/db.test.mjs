@@ -129,9 +129,9 @@ await rpc('save_sale', { id: sale2, sale_date: '2026-02-21', customer_id: cus, w
 check('edit sale gives stock back', +(await one(`select sum(qty_kg) q from lot_allocations where source_id=$1`, [sale2])).q === 300)
 
 // Money
-const rcv = await rpc('save_money_txn', { txn_date: '2026-02-25', txn_type: 'RECEIPT', party_id: cus, money_account_id: cash, amount: 60000 })
+const rcv = await rpc('save_money_txn', { txn_date: '2026-02-25', txn_type: 'RECEIPT', party_id: cus, money_account_id: cash, amount: 60000, allocations: null })
 const settled = await q(`select sale_id, amount from bill_settlements where money_txn_id = $1 order by id`, [rcv])
-check('receipt settles oldest bill first', settled[0].sale_id === sale && +settled[0].amount === 59500 && +settled[1].amount === 500, JSON.stringify(settled))
+check('receipt with allocations: null settles oldest bill first', settled[0].sale_id === sale && +settled[0].amount === 59500 && +settled[1].amount === 500, JSON.stringify(settled))
 await rpc('save_money_txn', { txn_date: '2026-02-25', txn_type: 'PAYMENT', party_id: sup, money_account_id: bank, amount: 50000, method: 'CHEQUE', cheque_no: '123' })
 const chq = (await one(`select id from money_txns where cheque_no='123'`)).id
 await db.query(`select public.set_cheque_status($1, 'BOUNCED')`, [chq])

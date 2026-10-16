@@ -132,7 +132,7 @@ export function PartiesPage() {
           ]}
         />
       </Card>
-      <PartyForm open={editing !== undefined} party={editing} onClose={() => setEditing(undefined)} />
+      {editing !== undefined && <PartyForm open party={editing} onClose={() => setEditing(undefined)} />}
     </>
   )
 }

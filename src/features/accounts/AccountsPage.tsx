@@ -63,7 +63,6 @@ function AccountForm({ account, open, onClose }: { account: Account | null; open
 
   const save = useSave(async () => {
     const row = {
-      ...(account ? { id: account.id } : { type: kind!.type, subtype: v.subtype }),
       code: v.code || suggestCode(v.subtype),
       name: v.name,
       name_bn: v.name_bn || null,
@@ -74,7 +73,9 @@ function AccountForm({ account, open, onClose }: { account: Account | null; open
       opening_date: v.opening_date,
       is_active: v.is_active,
     }
-    return unwrap(supabase.from('accounts').upsert(row).select('id').single())
+    return account
+      ? unwrap(supabase.from('accounts').update(row).eq('id', account.id))
+      : unwrap(supabase.from('accounts').insert({ ...row, type: kind!.type, subtype: v.subtype }))
   })
 
   const showOpening = ['ASSET', 'LIABILITY', 'EQUITY'].includes(account?.type ?? kind?.type ?? '') && account?.subtype !== 'OPENING_EQUITY'

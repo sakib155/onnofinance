@@ -33,9 +33,13 @@ export function MoneyPage() {
     return q
   })
   const rows = data ?? []
+  // A transfer moves money between our own accounts: with one account selected it is in or out
+  // of that account; across all accounts it is both, and cancels out.
+  const side = (r: MoneyTxn) =>
+    r.txn_type === 'TRANSFER' ? (!account ? 'both' : r.counter_account_id === account ? 'in' : 'out') : isInflow(r.txn_type) ? 'in' : 'out'
   const live = rows.filter((r) => r.cheque_status !== 'BOUNCED')
-  const totalIn = live.filter((r) => isInflow(r.txn_type)).reduce((s, r) => s + num(r.amount), 0)
-  const totalOut = live.filter((r) => !isInflow(r.txn_type) && r.txn_type !== 'TRANSFER').reduce((s, r) => s + num(r.amount), 0)
+  const totalIn = live.filter((r) => side(r) !== 'out').reduce((s, r) => s + num(r.amount), 0)
+  const totalOut = live.filter((r) => side(r) !== 'in').reduce((s, r) => s + num(r.amount), 0)
 
   return (
     <>
@@ -117,14 +121,14 @@ export function MoneyPage() {
               key: 'in',
               header: t('money.in'),
               align: 'right',
-              cell: (r) => (isInflow(r.txn_type) ? money(r.amount) : ''),
+              cell: (r) => (side(r) === 'in' ? money(r.amount) : side(r) === 'both' ? <span className="text-slate-400">{money(r.amount)}</span> : ''),
               footer: money(totalIn),
             },
             {
               key: 'out',
               header: t('money.out'),
               align: 'right',
-              cell: (r) => (!isInflow(r.txn_type) ? money(r.amount) : ''),
+              cell: (r) => (side(r) === 'out' ? money(r.amount) : side(r) === 'both' ? <span className="text-slate-400">{money(r.amount)}</span> : ''),
               footer: money(totalOut),
             },
           ]}

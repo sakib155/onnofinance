@@ -121,6 +121,12 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
       p: {
         id,
         ...h,
+        discount: num(h.discount),
+        transport_cost: num(h.transport_cost),
+        labour_cost: num(h.labour_cost),
+        other_cost: num(h.other_cost),
+        commission_amount: num(h.commission_amount),
+        paid_amount: num(h.paid_amount),
         costs_account_id: costsByUs ? h.costs_account_id : '',
         lines: lines
           .filter((l) => l.item_id)

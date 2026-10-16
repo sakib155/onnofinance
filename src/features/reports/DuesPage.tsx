@@ -7,10 +7,10 @@ import { PrintHeader } from '@/components/PrintHeader'
 import { Card, PageHeader, Stat } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData, useParties } from '@/lib/data'
-import { money, num } from '@/lib/format'
+import { ageDays, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 
-type Bill = { id: string; party_id: string; due_amount: number; age_days: number }
+type Bill = { id: string; party_id: string; due_amount: number; date: string }
 
 const BUCKETS = [
   { key: 'b0', max: 30 },
@@ -26,8 +26,8 @@ export function DuesPage() {
   const { data: parties, isLoading } = useParties()
   const { data: bills } = useData<Bill[]>(['dues-bills', side], () =>
     (side === 'receivable'
-      ? supabase.from('v_sale_dues').select('id, party_id:customer_id, due_amount, age_days').gt('due_amount', 0.005)
-      : supabase.from('v_purchase_dues').select('id, party_id:supplier_id, due_amount, age_days').gt('due_amount', 0.005)) as never,
+      ? supabase.from('v_sale_dues').select('id, party_id:customer_id, due_amount, date:sale_date').gt('due_amount', 0.005)
+      : supabase.from('v_purchase_dues').select('id, party_id:supplier_id, due_amount, date:purchase_date').gt('due_amount', 0.005)) as never,
   )
 
   const rows = (parties ?? [])
@@ -35,9 +35,9 @@ export function DuesPage() {
     .map((p) => {
       const own = (bills ?? []).filter((b) => b.party_id === p.id)
       const ageing = Object.fromEntries(
-        BUCKETS.map((b, i) => [b.key, own.filter((x) => x.age_days >= (i ? BUCKETS[i - 1].max : 0) && x.age_days < b.max).reduce((s, x) => s + num(x.due_amount), 0)]),
+        BUCKETS.map((b, i) => [b.key, own.filter((x) => ageDays(x.date) >= (i ? BUCKETS[i - 1].max : 0) && ageDays(x.date) < b.max).reduce((s, x) => s + num(x.due_amount), 0)]),
       ) as Record<(typeof BUCKETS)[number]['key'], number>
-      return { ...p, amount: Math.abs(num(p.balance)), ageing, oldest: own.reduce((m, b) => Math.max(m, b.age_days), 0) }
+      return { ...p, amount: Math.abs(num(p.balance)), ageing }
     })
     .sort((a, b) => b.amount - a.amount)
 

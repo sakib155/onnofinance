@@ -11,7 +11,7 @@ import { Table } from '@/components/ui/table'
 import { MoneyForm } from '@/features/money/MoneyForm'
 import { LedgerView } from '@/features/reports/Ledger'
 import { useData } from '@/lib/data'
-import { date, money, num } from '@/lib/format'
+import { ageDays, date, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { MoneyTxnType, Party } from '@/lib/types'
 import { PartyForm } from './PartyForm'
@@ -70,7 +70,7 @@ export function PartyLedgerPage() {
     { key: 'total', header: t('common.total'), align: 'right' as const, cell: (d: Due) => money(d.total_amount) },
     { key: 'paid', header: t('common.paid'), align: 'right' as const, cell: (d: Due) => money(d.paid_amount) },
     { key: 'due', header: t('common.due'), align: 'right' as const, cell: (d: Due) => <span className="font-medium">{money(d.due_amount)}</span> },
-    { key: 'age', header: t('dues.age'), align: 'right' as const, cell: (d: Due) => t('dues.days', { count: d.age_days }) },
+    { key: 'age', header: t('dues.age'), align: 'right' as const, cell: (d: Due) => t('dues.days', { count: ageDays(d.date) }) },
   ]
 
   return (
@@ -144,7 +144,7 @@ export function PartyLedgerPage() {
       {can('books') ? (
         <LedgerView party={party.id} debitLabel={t('ledger.partyDebit')} creditLabel={t('ledger.partyCredit')} />
       ) : null}
-      <PartyForm open={editing} party={party} onClose={() => setEditing(false)} />
+      {editing && <PartyForm open party={party} onClose={() => setEditing(false)} />}
       {money_ && <MoneyForm open type={money_} partyId={party.id} onClose={() => setMoney(null)} />}
     </>
   )

@@ -37,6 +37,11 @@ export function iso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Whole days from a date to today on this device (the server's clock is UTC)
+export function ageDays(v: string) {
+  return Math.max(0, Math.round((new Date(`${today()}T00:00:00`).getTime() - new Date(`${v}T00:00:00`).getTime()) / 86_400_000))
+}
+
 export function monthStart(d = new Date()) {
   return iso(new Date(d.getFullYear(), d.getMonth(), 1))
 }

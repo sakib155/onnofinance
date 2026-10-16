@@ -77,14 +77,20 @@ export function PartyForm({ party, defaultType, open, onClose, onSaved }: {
     return unwrap(supabase.from('parties').upsert(row).select('id').single()) as Promise<{ id: string }>
   })
 
-  const submit = handleSubmit((v) =>
-    save.mutate(v, {
-      onSuccess: (r) => {
-        toast(t('common.saved'))
-        onSaved?.(r.id)
-        onClose()
-      },
-    }),
+  const submit = handleSubmit(
+    (v) =>
+      save.mutate(v, {
+        onSuccess: (r) => {
+          toast(t('common.saved'))
+          onSaved?.(r.id)
+          onClose()
+        },
+      }),
+    // surface errors on fields that don't show their own message
+    (errors) => {
+      const [field, err] = Object.entries(errors)[0] ?? []
+      if (field) toast(`${field}: ${err?.message ?? ''}`, 'error')
+    },
   )
 
   return (

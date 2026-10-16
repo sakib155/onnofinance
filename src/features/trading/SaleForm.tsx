@@ -115,6 +115,11 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
       p: {
         id,
         ...h,
+        transport_charge: num(h.transport_charge),
+        labour_charge: num(h.labour_charge),
+        discount: num(h.discount),
+        commission_amount: num(h.commission_amount),
+        received_amount: num(h.received_amount),
         lines: lines
           .filter((l) => l.item_id)
           .map((l) => ({

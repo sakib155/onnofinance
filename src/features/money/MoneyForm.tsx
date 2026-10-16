@@ -90,7 +90,7 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
             ? Object.entries(alloc)
                 .filter(([, a]) => num(a) > 0)
                 .map(([id, a]) => ({ [type === 'RECEIPT' ? 'sale_id' : 'purchase_id']: id, amount: num(a) }))
-            : null,
+            : undefined,
       },
     }),
   )
