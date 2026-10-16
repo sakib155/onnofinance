@@ -108,7 +108,10 @@ export function MoneyPage() {
               header: t('money.details'),
               cell: (r) => (
                 <div>
-                  <div>{r.party_name ?? r.counter_account_name ?? ''}</div>
+                  <div>
+                    {r.party_name ?? r.counter_account_name ?? ''}
+                    {(r.linked_sale_no || r.linked_purchase_no) && <span className="ml-1 text-xs text-slate-500">({r.linked_sale_no ?? r.linked_purchase_no})</span>}
+                  </div>
                   <div className="text-xs text-slate-500">
                     {[r.money_account_name, r.method === 'CHEQUE' ? `${t('money.methods.CHEQUE')} ${r.cheque_no ?? ''} · ${t(`money.chequeStatus.${r.cheque_status}`)}` : null, r.notes]
                       .filter(Boolean)

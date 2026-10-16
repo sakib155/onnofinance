@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AccountSelect, isMoneyAccount, PartyPicker, WarehouseSelect } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Textarea } from '@/components/ui/form'
+import { Field, Input, Select, Textarea } from '@/components/ui/form'
 import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
+import { ConfirmModal } from '@/components/ui/modal'
 import { useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
 import { rpc, useData, useParties, useSave, useWarehouses } from '@/lib/data'
@@ -33,6 +34,9 @@ export type Sale = {
   commission_amount: number
   received_amount: number
   received_account_id: string | null
+  received_method: 'CASH' | 'BANK' | 'CHEQUE'
+  received_cheque_no: string | null
+  received_cheque_date: string | null
   cost_amount: number
   created_at: string
   lines?: SaleLine[]
@@ -43,6 +47,7 @@ export type SaleLine = {
   line_no: number
   item_id: string
   lot_id: string | null
+  warehouse_id: string | null
   bags: number
   bag_size_kg: number
   qty_kg: number
@@ -84,6 +89,9 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
     commission_amount: blank(s?.commission_amount),
     received_amount: blank(s?.received_amount),
     received_account_id: s?.received_account_id ?? '',
+    received_method: s?.received_method ?? 'CASH',
+    received_cheque_no: s?.received_cheque_no ?? '',
+    received_cheque_date: s?.received_cheque_date ?? '',
   }))
   const [lines, setLines] = useState<Line[]>(() =>
     s?.lines?.length
@@ -93,6 +101,7 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
             key: l.id,
             item_id: l.item_id,
             lot_id: l.lot_id ?? '',
+            warehouse_id: l.warehouse_id ?? '',
             bags: blank(l.bags),
             bag_size_kg: blank(l.bag_size_kg),
             gross_kg: String(l.qty_kg),
@@ -103,6 +112,7 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
       : [newLine()],
   )
   const [addingParty, setAddingParty] = useState(false)
+  const [overLimit, setOverLimit] = useState(false)
   const set = (k: keyof typeof h) => (v: string) => setH((x) => ({ ...x, [k]: v }))
 
   const goods = lines.reduce((s, l) => s + lineAmount(l), 0)
@@ -125,6 +135,7 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
           .map((l) => ({
             item_id: l.item_id,
             lot_id: l.lot_id,
+            warehouse_id: l.warehouse_id,
             bags: num(l.bags),
             bag_size_kg: num(l.bag_size_kg),
             qty_kg: num(l.gross_kg),
@@ -134,6 +145,16 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
       },
     }),
   )
+
+  const dueAfter = prevBalance + total - num(h.received_amount)
+  const limit = customer?.credit_limit != null ? num(customer.credit_limit) : null
+  const submit = () =>
+    save.mutate(undefined, {
+      onSuccess: (newId) => {
+        toast(t('common.saved'))
+        navigate(`/sales/${newId}`, { replace: true })
+      },
+    })
 
   return (
     <>
@@ -200,9 +221,28 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
                 <Input type="number" min="0" step="0.01" value={h.received_amount} onChange={(e) => set('received_amount')(e.target.value)} />
               </Field>
               {num(h.received_amount) > 0 && (
-                <Field label={t('money.receivedInto')}>
-                  <AccountSelect value={h.received_account_id} onChange={set('received_account_id')} filter={isMoneyAccount} />
-                </Field>
+                <>
+                  <Field label={t('money.receivedInto')}>
+                    <AccountSelect value={h.received_account_id} onChange={set('received_account_id')} filter={isMoneyAccount} />
+                  </Field>
+                  <Field label={t('money.method')}>
+                    <Select value={h.received_method} onChange={(e) => set('received_method')(e.target.value)}>
+                      <option value="CASH">{t('money.methods.CASH')}</option>
+                      <option value="BANK">{t('money.methods.BANK')}</option>
+                      <option value="CHEQUE">{t('money.methods.CHEQUE')}</option>
+                    </Select>
+                  </Field>
+                  {h.received_method === 'CHEQUE' && (
+                    <>
+                      <Field label={t('money.chequeNo')}>
+                        <Input value={h.received_cheque_no} onChange={(e) => set('received_cheque_no')(e.target.value)} />
+                      </Field>
+                      <Field label={t('money.chequeDate')}>
+                        <Input type="date" value={h.received_cheque_date} onChange={(e) => set('received_cheque_date')(e.target.value)} />
+                      </Field>
+                    </>
+                  )}
+                </>
               )}
               <Field label={t('common.reference')}>
                 <Input value={h.reference} onChange={(e) => set('reference')(e.target.value)} />
@@ -222,24 +262,19 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
               <SumRow label={t('trading.invoiceTotal')} value={money(total)} strong />
               <SumRow label={t('trading.receivedNow')} value={money(h.received_amount)} />
               <SumRow label={t('trading.dueOnInvoice')} value={money(total - num(h.received_amount))} />
-              {customer && <SumRow label={t('trading.customerTotalDue')} value={money(prevBalance + total - num(h.received_amount))} />}
+              {customer && <SumRow label={t('trading.customerTotalDue')} value={money(dueAfter)} />}
             </div>
+            {limit != null && dueAfter > limit + 0.005 && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {t('trading.overLimit', { limit: money(limit), over: money(dueAfter - limit) })}
+              </div>
+            )}
             <ErrorBox error={save.error} />
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => navigate(-1)}>
                 {t('common.cancel')}
               </Button>
-              <Button
-                loading={save.isPending}
-                onClick={() =>
-                  save.mutate(undefined, {
-                    onSuccess: (newId) => {
-                      toast(t('common.saved'))
-                      navigate(`/sales/${newId}`, { replace: true })
-                    },
-                  })
-                }
-              >
+              <Button loading={save.isPending} onClick={() => (limit != null && dueAfter > limit + 0.005 ? setOverLimit(true) : submit())}>
                 {t('common.save')}
               </Button>
             </div>
@@ -247,6 +282,18 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
         </div>
       </div>
       {addingParty && <PartyForm open defaultType="CUSTOMER" onClose={() => setAddingParty(false)} onSaved={set('customer_id')} />}
+      <ConfirmModal
+        open={overLimit}
+        onClose={() => setOverLimit(false)}
+        title={t('trading.overLimitTitle')}
+        message={t('trading.overLimit', { limit: money(limit), over: money(dueAfter - num(limit)) })}
+        danger={false}
+        loading={save.isPending}
+        onConfirm={() => {
+          setOverLimit(false)
+          submit()
+        }}
+      />
     </>
   )
 }

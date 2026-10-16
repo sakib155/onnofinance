@@ -33,6 +33,9 @@ export type Purchase = {
   commission_amount: number
   paid_amount: number
   paid_account_id: string | null
+  paid_method: 'CASH' | 'BANK' | 'CHEQUE'
+  paid_cheque_no: string | null
+  paid_cheque_date: string | null
   total_cost: number
   created_at: string
   lines?: PurchaseLine[]
@@ -87,6 +90,9 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
     commission_amount: blank(p?.commission_amount),
     paid_amount: blank(p?.paid_amount),
     paid_account_id: p?.paid_account_id ?? '',
+    paid_method: p?.paid_method ?? 'CASH',
+    paid_cheque_no: p?.paid_cheque_no ?? '',
+    paid_cheque_date: p?.paid_cheque_date ?? '',
   }))
   const [lines, setLines] = useState<Line[]>(() =>
     p?.lines?.length
@@ -96,6 +102,7 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
             key: l.id,
             item_id: l.item_id,
             lot_id: '',
+            warehouse_id: '',
             bags: blank(l.bags),
             bag_size_kg: blank(l.bag_size_kg),
             gross_kg: String(l.gross_kg),
@@ -214,9 +221,28 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
                 <Input type="number" min="0" step="0.01" value={h.paid_amount} onChange={(e) => set('paid_amount')(e.target.value)} />
               </Field>
               {num(h.paid_amount) > 0 && (
-                <Field label={t('money.paidFrom')}>
-                  <AccountSelect value={h.paid_account_id} onChange={set('paid_account_id')} filter={isMoneyAccount} />
-                </Field>
+                <>
+                  <Field label={t('money.paidFrom')}>
+                    <AccountSelect value={h.paid_account_id} onChange={set('paid_account_id')} filter={isMoneyAccount} />
+                  </Field>
+                  <Field label={t('money.method')}>
+                    <Select value={h.paid_method} onChange={(e) => set('paid_method')(e.target.value)}>
+                      <option value="CASH">{t('money.methods.CASH')}</option>
+                      <option value="BANK">{t('money.methods.BANK')}</option>
+                      <option value="CHEQUE">{t('money.methods.CHEQUE')}</option>
+                    </Select>
+                  </Field>
+                  {h.paid_method === 'CHEQUE' && (
+                    <>
+                      <Field label={t('money.chequeNo')}>
+                        <Input value={h.paid_cheque_no} onChange={(e) => set('paid_cheque_no')(e.target.value)} />
+                      </Field>
+                      <Field label={t('money.chequeDate')}>
+                        <Input type="date" value={h.paid_cheque_date} onChange={(e) => set('paid_cheque_date')(e.target.value)} />
+                      </Field>
+                    </>
+                  )}
+                </>
               )}
               <Field label={t('common.notes')} className="sm:col-span-2">
                 <Textarea value={h.notes} onChange={(e) => set('notes')(e.target.value)} />

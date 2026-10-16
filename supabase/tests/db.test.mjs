@@ -157,6 +157,44 @@ await rpc('save_purchase_return', { return_date: '2026-03-02', purchase_id: pur2
 await expectError('cannot edit sale with returns', () => rpc('save_sale', { id: sale, sale_date: '2026-02-20', customer_id: cus, warehouse_id: wh, lines: [{ item_id: rice, qty_kg: 1, rate: 1 }] }), 'returns')
 await db.query(`select public.delete_sale_return($1)`, [sr])
 
+// Business rules (0012)
+const cus2 = (await one(`insert into parties (name, types) values ('Shop Two', '{CUSTOMER}') returning id`)).id
+const sup2 = (await one(`insert into parties (name, types) values ('Mill Two', '{SUPPLIER}') returning id`)).id
+await expectError('per-bag rate needs a bag count', () => rpc('save_sale', { sale_date: '2026-03-03', customer_id: cus2, warehouse_id: wh,
+  lines: [{ item_id: rice, qty_kg: 100, rate: 2500, rate_unit: 'BAG' }] }), 'number of bags')
+const s3head = { sale_date: '2026-03-03', customer_id: cus2, warehouse_id: wh, received_amount: 1000, received_account_id: bank, received_method: 'CHEQUE', received_cheque_no: 'C1' }
+const s3 = await rpc('save_sale', { ...s3head, lines: [{ item_id: rice, qty_kg: 100, rate: 60 }, { item_id: rice, warehouse_id: wh2, qty_kg: 50, rate: 60 }] })
+const s3wh = await q(`select distinct l.warehouse_id from lot_allocations a join lots l on l.id = a.lot_id where a.source_id = $1`, [s3])
+check('one sale can ship from two godowns', s3wh.length === 2)
+const linked = await one(`select * from money_txns where linked_sale_id = $1`, [s3])
+check('money received at a sale becomes a linked cheque receipt', linked?.method === 'CHEQUE' && linked.cheque_status === 'PENDING' && +linked.amount === 1000)
+const due = async (id) => +(await one(`select due_amount from v_sale_dues where id = $1`, [id])).due_amount
+check('invoice due after money at sale', (await due(s3)) === 8000, await due(s3))
+await db.query(`select public.set_cheque_status($1, 'BOUNCED')`, [linked.id])
+check('bounced cheque at sale puts the full amount back on the invoice', (await due(s3)) === 9000
+  && +(await one(`select balance from v_party_balances where id = $1`, [cus2])).balance === 9000)
+await db.query(`select public.set_cheque_status($1, 'CLEARED')`, [linked.id])
+check('cleared cheque at sale settles the invoice again', (await due(s3)) === 8000)
+await expectError('linked receipt cannot be edited on its own', () => rpc('save_money_txn', { id: linked.id, txn_date: '2026-03-03', txn_type: 'RECEIPT', party_id: cus2, money_account_id: bank, amount: 5 }), 'change it there')
+await expectError('linked receipt cannot be deleted on its own', () => db.query(`select public.delete_money_txn($1)`, [linked.id]), 'change it there')
+await rpc('save_money_txn', { txn_date: '2026-03-04', txn_type: 'RECEIPT', party_id: cus2, money_account_id: cash, amount: 5000 })
+await expectError('invoice cannot be lowered below what was received', () => rpc('save_sale', { id: s3, ...s3head, lines: [{ item_id: rice, qty_kg: 10, rate: 60 }] }), 'already been received')
+await rpc('save_sale', { id: s3, ...s3head, lines: [{ item_id: rice, qty_kg: 100, rate: 61 }, { item_id: rice, warehouse_id: wh2, qty_kg: 50, rate: 61 }] })
+check('editing a sale keeps exactly one linked receipt', +(await one(`select count(*) c from money_txns where linked_sale_id = $1`, [s3])).c === 1 && (await due(s3)) === 9150 - 6000, await due(s3))
+const p3 = await rpc('save_purchase', { purchase_date: '2026-03-03', supplier_id: sup2, warehouse_id: wh, paid_amount: 500, paid_account_id: bank, paid_method: 'BANK',
+  lines: [{ item_id: paddy, gross_kg: 100, rate: 30 }] })
+check('money paid at a purchase becomes a linked payment', +(await one(`select count(*) c from money_txns where linked_purchase_id = $1 and txn_type = 'PAYMENT'`, [p3])).c === 1
+  && +(await one(`select due_amount from v_purchase_dues where id = $1`, [p3])).due_amount === 2500)
+await expectError('per-bag purchase rate needs a bag count', () => rpc('save_purchase', { purchase_date: '2026-03-03', supplier_id: sup2, warehouse_id: wh,
+  lines: [{ item_id: paddy, gross_kg: 100, rate: 2000, rate_unit: 'BAG' }] }), 'number of bags')
+await rpc('save_money_txn', { txn_date: '2026-03-05', txn_type: 'LOAN_REPAY', party_id: lender, money_account_id: bank, amount: 6000, interest_amount: 1000 })
+check('loan repayment splits principal and interest', +(await one(`select balance from v_party_balances where id = $1`, [lender])).balance === -85000
+  && +(await one(`select balance from v_account_balances where subtype = 'INTEREST_EXPENSE'`)).balance === 1000)
+await expectError('interest cannot exceed the amount', () => rpc('save_money_txn', { txn_date: '2026-03-05', txn_type: 'LOAN_REPAY', party_id: lender, money_account_id: bank, amount: 100, interest_amount: 200 }), 'Interest')
+const ageing = await q(`select * from report_ageing('2026-12-31')`)
+check('ageing buckets add up to each party balance', ageing.length > 0 && ageing.every((r) => Math.abs(+r.b0 + +r.b30 + +r.b60 + +r.b90 - Math.abs(+r.balance)) < 0.01),
+  JSON.stringify(ageing.map((r) => [r.name, r.balance, r.b0, r.b30, r.b60, r.b90])))
+
 // Integrity checks
 const unbalanced = await q(`select entry_id from journal_lines group by entry_id having sum(debit) <> sum(credit)`)
 check('every journal entry balances', unbalanced.length === 0)

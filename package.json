@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc",
     "preview": "vite preview",
-    "test:db": "node supabase/tests/db.test.mjs",
+    "test:db": "node supabase/tests/db.test.mjs && node supabase/tests/upgrade.test.mjs",
     "db:bundle": "node supabase/bundle.mjs"
   },
   "dependencies": {

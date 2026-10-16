@@ -10,7 +10,7 @@ import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { rpc, useData, useSave } from '@/lib/data'
-import { date, money } from '@/lib/format'
+import { date, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { isInflow, MoneyForm, type MoneyTxn } from './MoneyForm'
 
@@ -32,6 +32,9 @@ export function VoucherPage() {
   const status = useSave((s: string) => rpc('set_cheque_status', { p_id: id, p_status: s }))
 
   if (isLoading || !v) return <Loading />
+  // recorded together with a sale or purchase: changed from there, not here
+  const linkTo = v.linked_sale_id ? `/sales/${v.linked_sale_id}` : v.linked_purchase_id ? `/purchases/${v.linked_purchase_id}` : null
+  const linkNo = v.linked_sale_no ?? v.linked_purchase_no
 
   const rows: [string, React.ReactNode][] = [
     [t('common.date'), date(v.txn_date)],
@@ -39,6 +42,8 @@ export function VoucherPage() {
     ...(v.party_name ? [[t('common.party'), <Link to={`/parties/${v.party_id}`} className="text-brand-800 hover:underline">{v.party_name}</Link>] as [string, React.ReactNode]] : []),
     [v.txn_type === 'TRANSFER' ? t('money.fromAccount') : isInflow(v.txn_type) ? t('money.receivedInto') : t('money.paidFrom'), v.money_account_name],
     ...(v.counter_account_name ? [[v.txn_type === 'TRANSFER' ? t('money.toAccount') : t('common.account'), v.counter_account_name] as [string, React.ReactNode]] : []),
+    ...(linkTo ? [[t('money.recordedWith'), <Link to={linkTo} className="text-brand-800 hover:underline">{linkNo}</Link>] as [string, React.ReactNode]] : []),
+    ...(num(v.interest_amount) > 0 ? [[t('money.ofWhichInterest'), money(v.interest_amount)] as [string, React.ReactNode]] : []),
     [t('money.method'), t(`money.methods.${v.method}`)],
     ...(v.method === 'CHEQUE'
       ? [[t('money.cheque'), `${v.cheque_no ?? ''} · ${date(v.cheque_date)} · ${t(`money.chequeStatus.${v.cheque_status}`)}`] as [string, React.ReactNode]]
@@ -71,7 +76,7 @@ export function VoucherPage() {
                 {t('money.markBounced')}
               </Button>
             )}
-            {can('money') && (
+            {can('money') && !linkTo && (
               <>
                 <Button variant="secondary" onClick={() => setEditing(true)}>
                   {t('common.edit')}

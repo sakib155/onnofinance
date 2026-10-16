@@ -96,7 +96,7 @@ export function SalesPage() {
 }
 
 type SaleDetail = Sale & {
-  lines: (SaleLine & { item: Item })[]
+  lines: (SaleLine & { item: Item; warehouse: { name: string } | null })[]
   customer: { id: string; name: string; name_bn: string | null; phone: string | null; address: string | null }
   broker: { name: string } | null
   warehouse: { name: string }
@@ -116,7 +116,7 @@ export function SaleView() {
     supabase
       .from('sales')
       .select(
-        '*, lines:sale_lines(*, item:items(*)), customer:parties!sales_customer_id_fkey(id, name, name_bn, phone, address), broker:parties!sales_broker_id_fkey(name), warehouse:warehouses(name)',
+        '*, lines:sale_lines(*, item:items(*), warehouse:warehouses(name)), customer:parties!sales_customer_id_fkey(id, name, name_bn, phone, address), broker:parties!sales_broker_id_fkey(name), warehouse:warehouses(name)',
       )
       .eq('id', id!)
       .single() as never,
@@ -251,7 +251,12 @@ export function SaleView() {
               {lines.map((l, i) => (
                 <tr key={l.id}>
                   <td className="border border-slate-200 px-2 py-1.5">{i + 1}</td>
-                  <td className="border border-slate-200 px-2 py-1.5 font-medium">{nameOf(l.item)}</td>
+                  <td className="border border-slate-200 px-2 py-1.5 font-medium">
+                    {nameOf(l.item)}
+                    {l.warehouse && l.warehouse_id !== s.warehouse_id && (
+                      <div className="text-[11px] font-normal text-slate-500">{t('trading.fromGodown', { name: l.warehouse.name })}</div>
+                    )}
+                  </td>
                   <td className="border border-slate-200 px-2 py-1.5 text-right">{num(l.bags) ? `${qty(l.bags)} × ${qty(l.bag_size_kg)} ${t('unit.kg')}` : ''}</td>
                   <td className="border border-slate-200 px-2 py-1.5 text-right">{qty(l.qty_kg)}</td>
                   <td className="border border-slate-200 px-2 py-1.5 text-right">

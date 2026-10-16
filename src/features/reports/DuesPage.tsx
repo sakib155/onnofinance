@@ -6,43 +6,35 @@ import { nameOf, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Card, PageHeader, Stat } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
-import { useData, useParties } from '@/lib/data'
-import { ageDays, money, num } from '@/lib/format'
+import { useData } from '@/lib/data'
+import { money, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 
-type Bill = { id: string; party_id: string; due_amount: number; date: string }
+type AgeRow = {
+  party_id: string
+  name: string
+  name_bn: string | null
+  phone: string | null
+  credit_limit: number | null
+  balance: number
+  b0: number
+  b30: number
+  b60: number
+  b90: number
+}
 
-const BUCKETS = [
-  { key: 'b0', max: 30 },
-  { key: 'b30', max: 60 },
-  { key: 'b60', max: 90 },
-  { key: 'b90', max: Infinity },
-] as const
+const BUCKETS = ['b0', 'b30', 'b60', 'b90'] as const
 
-// Receivables / payables per party, with unpaid bills split by age
+// Receivables / payables per party. The amount still owed is made up of the party's most recent
+// bills and charges, so it is aged by those dates (opening balances and commissions included).
 export function DuesPage() {
   const { t } = useTranslation()
   const [side, setSide] = useState<'receivable' | 'payable'>('receivable')
-  const { data: parties, isLoading } = useParties()
-  const { data: bills } = useData<Bill[]>(['dues-bills', side], () =>
-    (side === 'receivable'
-      ? supabase.from('v_sale_dues').select('id, party_id:customer_id, due_amount, date:sale_date').gt('due_amount', 0.005)
-      : supabase.from('v_purchase_dues').select('id, party_id:supplier_id, due_amount, date:purchase_date').gt('due_amount', 0.005)) as never,
-  )
+  const { data, isLoading } = useData<AgeRow[]>(['ageing', today()], () => supabase.rpc('report_ageing', { p_as_of: today() }))
 
-  const rows = (parties ?? [])
-    .filter((p) => (side === 'receivable' ? num(p.balance) > 0.005 : num(p.balance) < -0.005))
-    .map((p) => {
-      const own = (bills ?? []).filter((b) => b.party_id === p.id)
-      const ageing = Object.fromEntries(
-        BUCKETS.map((b, i) => [b.key, own.filter((x) => ageDays(x.date) >= (i ? BUCKETS[i - 1].max : 0) && ageDays(x.date) < b.max).reduce((s, x) => s + num(x.due_amount), 0)]),
-      ) as Record<(typeof BUCKETS)[number]['key'], number>
-      return { ...p, amount: Math.abs(num(p.balance)), ageing }
-    })
-    .sort((a, b) => b.amount - a.amount)
-
-  const total = rows.reduce((s, r) => s + r.amount, 0)
-  const bucketTotal = (k: (typeof BUCKETS)[number]['key']) => rows.reduce((s, r) => s + r.ageing[k], 0)
+  const rows = (data ?? []).filter((r) => (side === 'receivable' ? num(r.balance) > 0 : num(r.balance) < 0))
+  const total = rows.reduce((s, r) => s + Math.abs(num(r.balance)), 0)
+  const bucketTotal = (k: (typeof BUCKETS)[number]) => rows.reduce((s, r) => s + num(r[k]), 0)
 
   return (
     <>
@@ -58,41 +50,45 @@ export function DuesPage() {
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label={t('common.total')} value={money(total)} hint={t('dues.parties', { count: rows.length })} />
         {BUCKETS.map((b) => (
-          <Stat key={b.key} label={t(`dues.${b.key}`)} value={money(bucketTotal(b.key))} />
+          <Stat key={b} label={t(`dues.${b}`)} value={money(bucketTotal(b))} tone={b === 'b90' && bucketTotal(b) > 0 ? 'down' : undefined} />
         ))}
       </div>
       <Card padded={false}>
         <Table
           loading={isLoading}
           rows={rows}
-          rowKey={(r) => r.id}
+          rowKey={(r) => r.party_id}
           columns={[
             {
               key: 'name',
               header: t('common.party'),
               cell: (r) => (
-                <Link to={`/parties/${r.id}`} className="font-medium text-brand-800 hover:underline">
+                <Link to={`/parties/${r.party_id}`} className="font-medium text-brand-800 hover:underline">
                   {nameOf(r)}
                 </Link>
               ),
             },
             { key: 'phone', header: t('common.phone'), cell: (r) => <span className="text-slate-500">{r.phone}</span> },
             ...BUCKETS.map((b) => ({
-              key: b.key,
-              header: t(`dues.${b.key}`),
+              key: b,
+              header: t(`dues.${b}`),
               align: 'right' as const,
-              cell: (r: (typeof rows)[number]) => (r.ageing[b.key] ? money(r.ageing[b.key]) : ''),
-              footer: money(bucketTotal(b.key)),
+              cell: (r: AgeRow) => (num(r[b]) ? money(r[b]) : ''),
+              footer: money(bucketTotal(b)),
             })),
             {
               key: 'total',
               header: t('dues.balance'),
               align: 'right',
-              cell: (r) => (
-                <span className={clsx('font-semibold', r.credit_limit && r.amount > num(r.credit_limit) && 'text-red-600')} title={r.credit_limit ? `${t('parties.creditLimit')}: ${money(r.credit_limit)}` : undefined}>
-                  {money(r.amount)}
-                </span>
-              ),
+              cell: (r) => {
+                const amount = Math.abs(num(r.balance))
+                const over = side === 'receivable' && r.credit_limit != null && amount > num(r.credit_limit)
+                return (
+                  <span className={clsx('font-semibold', over && 'text-red-600')} title={over ? `${t('parties.creditLimit')}: ${money(r.credit_limit)}` : undefined}>
+                    {money(amount)}
+                  </span>
+                )
+              },
               footer: money(total),
             },
           ]}

@@ -44,6 +44,11 @@ export type MoneyTxn = {
   cheque_status: 'PENDING' | 'CLEARED' | 'BOUNCED' | null
   reference: string | null
   notes: string | null
+  interest_amount: number
+  linked_sale_id: string | null
+  linked_purchase_id: string | null
+  linked_sale_no?: string | null
+  linked_purchase_no?: string | null
   money_account_name?: string
   counter_account_name?: string | null
   party_name?: string | null
@@ -65,6 +70,7 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
     money_account_id: txn?.money_account_id ?? '',
     counter_account_id: txn?.counter_account_id ?? '',
     amount: txn ? String(txn.amount) : '',
+    interest_amount: txn && num(txn.interest_amount) ? String(txn.interest_amount) : '',
     method: txn?.method ?? 'CASH',
     cheque_no: txn?.cheque_no ?? '',
     cheque_date: txn?.cheque_date ?? '',
@@ -85,6 +91,7 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
         txn_type: type,
         ...v,
         amount: num(v.amount),
+        interest_amount: num(v.interest_amount),
         allocations:
           !auto && bills.length
             ? Object.entries(alloc)
@@ -178,6 +185,11 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
               onChange={set('counter_account_id')}
               filter={(a) => a.type === 'INCOME' && a.subtype === 'OTHER_INCOME'}
             />
+          </Field>
+        )}
+        {(type === 'LOAN_REPAY' || type === 'LOAN_RECOVER') && (
+          <Field label={t('money.ofWhichInterest')} hint={t('money.interestHint')}>
+            <Input type="number" step="0.01" min="0" value={v.interest_amount} onChange={(e) => set('interest_amount')(e.target.value)} />
           </Field>
         )}
         <Field label={t('money.method')}>
