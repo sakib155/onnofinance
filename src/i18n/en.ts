@@ -520,6 +520,10 @@ export const en = {
     outputs: 'Outputs',
     valuedAt: 'Valued at',
     restOfCost: 'rest of cost',
+    moreOutThanIn: {
+      DRYER: 'Check the weights: {{out}} is coming out of {{in}} of paddy. Output is normally less than what went in.',
+      SORTER: 'Check the weights: {{out}} is coming out of {{in}} of unsorted rice. Output is normally less than what went in.',
+    },
     costShare: 'Cost share',
     totalOut: 'Total out',
     reopen: 'Reopen',

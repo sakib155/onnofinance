@@ -246,6 +246,11 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
         </div>
         <p className="text-xs text-slate-500 sm:col-span-2 lg:col-span-4">{t('production.costRule')}</p>
       </div>
+      {outKg > num(batch.input_kg) + 0.0005 && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {t(`production.moreOutThanIn.${batch.kind}`, { out: kg(outKg), in: kg(batch.input_kg) })}
+        </div>
+      )}
       <ErrorBox error={save.error} />
     </Modal>
   )
