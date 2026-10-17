@@ -64,6 +64,8 @@ check('account balances unchanged', JSON.stringify(old.accounts) === JSON.string
 check('sale and purchase dues unchanged', old.saleDue === now.saleDue && old.purDue === now.purDue, `${now.saleDue} ${now.purDue}`)
 check('money received at the sale is now a linked receipt', +(await one(`select count(*) c from money_txns where linked_sale_id = $1 and amount = 50000`, [sale])).c === 1)
 check('money paid at the purchase is now a linked payment', +(await one(`select count(*) c from money_txns where linked_purchase_id = $1 and amount = 100000`, [pur])).c === 1)
+const me = await one(`select role, status from profiles where id = $1`, [admin])
+check('the existing admin becomes the active super admin', me.role === 'SUPER_ADMIN' && me.status === 'ACTIVE', JSON.stringify(me))
 check('every journal entry balances', (await q(`select entry_id from journal_lines group by entry_id having sum(debit) <> sum(credit)`)).length === 0)
 // running it a second time must not duplicate anything
 for (const f of after) await db.exec(fs.readFileSync(new URL(f, dir), 'utf8'))

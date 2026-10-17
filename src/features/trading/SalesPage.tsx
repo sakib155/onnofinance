@@ -40,7 +40,7 @@ export function SalesPage() {
         title={t('nav.sales')}
         subtitle={t('trading.salesSubtitle')}
         actions={
-          can('trade') && (
+          can('sale') && (
             <ButtonLink to="/sales/new">
               <Plus className="size-4" />
               {t('trading.newSale')}
@@ -159,13 +159,13 @@ export function SaleView() {
         subtitle={can('books') ? `${t('trading.grossProfit')}: ${money(profit)} · ${t('trading.costOfGoods')}: ${money(s.cost_amount)}` : undefined}
         actions={
           <>
-            {can('trade') && (
+            {can('sale') && (
               <ButtonLink to={`/sales/${s.id}/edit`} variant="secondary">
                 <Pencil className="size-4" />
                 {t('common.edit')}
               </ButtonLink>
             )}
-            {can('deleteDocs') && (
+            {can('deleteDoc') && (
               <Button variant="secondary" onClick={() => setDeleting(true)}>
                 <Trash2 className="size-4" />
                 {t('common.delete')}

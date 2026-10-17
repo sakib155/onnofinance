@@ -39,7 +39,7 @@ export function ProductionPage() {
         title={t('nav.production')}
         subtitle={t('production.subtitle')}
         actions={
-          can('trade') && (
+          can('production') && (
             <ButtonLink to="/production/new">
               <Plus className="size-4" />
               {t('production.newBatch')}

@@ -177,7 +177,7 @@ export function AccountsPage() {
         title={t('nav.accounts')}
         subtitle={t('accounts.subtitle')}
         actions={
-          can('editSetup') && (
+          can('setup') && (
             <Button onClick={() => setEditing(null)}>
               <Plus className="size-4" />
               {t('accounts.new')}
@@ -217,7 +217,7 @@ export function AccountsPage() {
                       header: '',
                       align: 'right',
                       cell: (a) =>
-                        can('editSetup') && (
+                        can('setup') && (
                           <Button
                             size="sm"
                             variant="ghost"

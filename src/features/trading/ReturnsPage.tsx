@@ -141,7 +141,8 @@ export function ReturnsPage() {
   const { t } = useTranslation()
   const can = useCan()
   const toast = useToast()
-  const [kind, setKind] = useState<Kind>('sale')
+  const [kind, setKind] = useState<Kind>(() => (can('saleReturn', 'books') ? 'sale' : 'purchase'))
+  const canKind = can(kind === 'sale' ? 'saleReturn' : 'purchaseReturn')
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<ReturnRow | null>(null)
   const { data, isLoading } = useData<ReturnRow[]>(['returns', kind], () =>
@@ -163,7 +164,7 @@ export function ReturnsPage() {
         title={t('nav.returns')}
         subtitle={t('returns.subtitle')}
         actions={
-          can('returns') && (
+          canKind && (
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
               {kind === 'sale' ? t('returns.newSaleReturn') : t('returns.newPurchaseReturn')}
@@ -201,7 +202,7 @@ export function ReturnsPage() {
               header: '',
               align: 'right',
               cell: (r) =>
-                can('returns') && (
+                canKind && (
                   <Button size="sm" variant="ghost" onClick={() => setDeleting(r)} aria-label={t('common.delete')}>
                     <Trash2 className="size-4" />
                   </Button>

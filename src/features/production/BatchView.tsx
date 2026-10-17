@@ -386,7 +386,7 @@ export function BatchView() {
         subtitle={`${t('production.started')} ${date(b.start_date)}${b.completed_date ? ` · ${t('production.completedOn')} ${date(b.completed_date)}` : ''}`}
         actions={
           <>
-            {open && can('trade') && (
+            {open && can('production') && (
               <>
                 <ButtonLink to={`/production/${b.id}/edit`} variant="secondary">
                   <Pencil className="size-4" />
@@ -398,7 +398,7 @@ export function BatchView() {
                 </Button>
               </>
             )}
-            {open && can('deleteDocs') && (
+            {open && can('deleteDoc') && (
               <Button variant="secondary" onClick={() => setConfirm('delete')}>
                 <Trash2 className="size-4" />
               </Button>
@@ -438,7 +438,7 @@ export function BatchView() {
               className={clsx(b.status === s.stage && 'ring-2 ring-brand-600')}
               actions={
                 open &&
-                can('trade') && (
+                can('production') && (
                   <Button size="sm" variant="ghost" onClick={() => setStageEdit(s)}>
                     {t('common.edit')}
                   </Button>
@@ -479,7 +479,7 @@ export function BatchView() {
           padded={false}
           actions={
             open &&
-            can('trade') && (
+            can('production') && (
               <Button size="sm" variant="secondary" onClick={() => setAddingCost(true)}>
                 <Plus className="size-4" />
                 {t('production.addCost')}
@@ -513,7 +513,7 @@ export function BatchView() {
                 align: 'right',
                 cell: (c) =>
                   open &&
-                  can('trade') && (
+                  can('production') && (
                     <Button size="sm" variant="ghost" onClick={() => delCost.mutate(c.id, { onError: err })} aria-label={t('common.delete')}>
                       <Trash2 className="size-4" />
                     </Button>

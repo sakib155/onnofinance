@@ -109,7 +109,7 @@ export function PartyLedgerPage() {
                 </Button>
               </>
             )}
-            {can('editParties') && (
+            {can('parties') && (
               <Button variant="secondary" onClick={() => setEditing(true)}>
                 {t('common.edit')}
               </Button>

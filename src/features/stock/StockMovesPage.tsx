@@ -220,7 +220,7 @@ export function StockMovesPage() {
         title={t('nav.stockMoves')}
         subtitle={t('stock.movesSubtitle')}
         actions={
-          can('trade') && (
+          can('stock') && (
             <>
               <Button variant="secondary" onClick={() => setForm('transfer')}>
                 <ArrowLeftRight className="size-4" />
@@ -282,7 +282,7 @@ export function StockMovesPage() {
               header: '',
               align: 'right',
               cell: (m) =>
-                can('trade') &&
+                can('stock') &&
                 deletable[m.source_type] && (
                   <Button size="sm" variant="ghost" onClick={() => setDeleting(m)} aria-label={t('common.delete')}>
                     <Trash2 className="size-4" />

@@ -65,7 +65,7 @@ export function WarehousesPage() {
         title={t('nav.warehouses')}
         subtitle={t('warehouses.subtitle')}
         actions={
-          can('editSetup') && (
+          can('setup') && (
             <Button onClick={() => setEditing(null)}>
               <Plus className="size-4" />
               {t('warehouses.new')}
@@ -78,7 +78,7 @@ export function WarehousesPage() {
           loading={isLoading}
           rows={data}
           rowKey={(w) => w.id}
-          onRowClick={can('editSetup') ? setEditing : undefined}
+          onRowClick={can('setup') ? setEditing : undefined}
           rowClassName={(w) => (w.is_active ? undefined : 'opacity-50')}
           columns={[
             { key: 'name', header: t('common.name'), cell: (w) => <span className="font-medium">{nameOf(w)}</span> },

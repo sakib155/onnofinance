@@ -41,12 +41,12 @@ const expectError = async (label, fn, match) => {
   catch (e) { check(label, !match || e.message.includes(match), e.message) }
 }
 
-// Users: first becomes ADMIN, second VIEWER
+// Users: first sign-up becomes the active super admin, later sign-ups wait for approval
 const admin = '11111111-1111-1111-1111-111111111111'
 const viewer = '22222222-2222-2222-2222-222222222222'
 await q(`insert into auth.users (id, email) values ($1, 'a@x.com'), ($2, 'v@x.com')`, [admin, viewer])
-const roles = await q(`select email, role from public.profiles order by email`)
-check('first user is ADMIN, second VIEWER', roles[0].role === 'ADMIN' && roles[1].role === 'VIEWER')
+const roles = await q(`select email, role, status from public.profiles order by email`)
+check('first sign-up is active SUPER_ADMIN, next is PENDING', roles[0].role === 'SUPER_ADMIN' && roles[0].status === 'ACTIVE' && roles[1].status === 'PENDING', JSON.stringify(roles))
 await db.exec(`set request.jwt.claim.sub = '${admin}'`)
 
 const acc = async (sub) => (await one(`select id from accounts where subtype = $1 order by code limit 1`, [sub])).id
@@ -230,18 +230,83 @@ check('cash summary closing = opening + in - out', cs.every((r) => Math.abs(+r.o
 await db.exec(`set role authenticated`)
 await expectError('app cannot call internal post_journal', () => db.query(`select public.post_journal(current_date, 'X', null, null, '[]'::jsonb)`), 'permission denied')
 await expectError('documents cannot be written directly', () => db.query(`insert into public.money_txns (txn_no, txn_date, txn_type, money_account_id, amount) values ('x', current_date, 'EXPENSE', $1, 1)`, [cash]), 'row-level security')
-check('admin can read journal', (await q(`select count(*) c from journal_lines`))[0].c > 0)
-await db.exec(`set request.jwt.claim.sub = '${viewer}'`)
-check('viewer can read', (await q(`select count(*) c from sales`))[0].c > 0)
+check('super admin can read journal', (await q(`select count(*) c from journal_lines`))[0].c > 0)
+const as = async (id) => db.exec(`set request.jwt.claim.sub = '${id}'`)
+const sa = async (sql, params) => { await as(admin); return q(sql, params) }
+
+// pending sign-up sees nothing
+await as(viewer)
+check('pending user sees no data', +(await q(`select count(*) c from sales`))[0].c === 0 && +(await q(`select count(*) c from parties`))[0].c === 0)
+check('pending user can see their own pending profile', (await q(`select status from profiles where id = $1`, [viewer]))[0]?.status === 'PENDING')
+await expectError('pending user cannot approve themselves', async () => {
+  const r = await db.query(`update profiles set status = 'ACTIVE' where id = $1`, [viewer])
+  if (r.affectedRows === 0) throw new Error('row-level security: no rows updated')
+}, 'row-level security')
+await expectError('pending user cannot save anything', () => rpc('save_sale', { sale_date: '2026-03-05', customer_id: cus, warehouse_id: wh, lines: [{ item_id: rice, qty_kg: 1, rate: 1 }] }), 'permission')
+
+// super admin approves as viewer
+await sa(`update profiles set status = 'ACTIVE', role = 'VIEWER' where id = $1`, [viewer])
+check('approval records who approved', (await q(`select approved_by from profiles where id = $1`, [viewer]))[0].approved_by === admin)
+await as(viewer)
+check('approved viewer can read', +(await q(`select count(*) c from sales`))[0].c > 0)
+check('viewer can read the books', +(await q(`select count(*) c from journal_lines`))[0].c > 0)
 await expectError('viewer cannot save a sale', () => rpc('save_sale', { sale_date: '2026-03-05', customer_id: cus, warehouse_id: wh, lines: [{ item_id: rice, qty_kg: 1, rate: 1 }] }), 'permission')
 await expectError('viewer cannot add a party', () => db.query(`insert into parties (name) values ('x')`), 'row-level security')
-await db.exec(`reset role; set request.jwt.claim.sub = '${admin}'`)
-await q(`update profiles set role = 'OPERATOR' where id = $1`, [viewer])
-await db.exec(`set role authenticated; set request.jwt.claim.sub = '${viewer}'`)
-check('operator cannot read the books', +(await q(`select count(*) c from journal_lines`))[0].c === 0)
-check('operator can save a purchase', !!(await rpc('save_purchase', { purchase_date: '2026-03-05', supplier_id: sup, warehouse_id: wh, lines: [{ item_id: paddy, gross_kg: 100, rate: 30 }] })))
-await expectError('operator cannot record money', () => rpc('save_money_txn', { txn_date: '2026-03-05', txn_type: 'EXPENSE', money_account_id: cash, counter_account_id: salary, amount: 1 }), 'permission')
+await expectError('viewer cannot change roles', async () => {
+  const r = await db.query(`update profiles set role = 'ADMIN' where id = $1`, [viewer])
+  if (r.affectedRows === 0) throw new Error('row-level security: no rows updated')
+}, 'row-level security')
+
+// department roles
+const tryRole = async (role) => {
+  await sa(`update profiles set role = $2 where id = $1`, [viewer, role]); await as(viewer)
+  const ok = async (fn) => { try { await fn(); return true } catch { return false } }
+  return {
+    purchase: await ok(() => rpc('save_purchase', { purchase_date: '2026-03-06', supplier_id: sup2, warehouse_id: wh, lines: [{ item_id: paddy, gross_kg: 10, rate: 30 }] })),
+    sale: await ok(() => rpc('save_sale', { sale_date: '2026-03-06', customer_id: cus2, warehouse_id: wh, lines: [{ item_id: broken, qty_kg: 1, rate: 30 }] })),
+    production: await ok(() => rpc('save_production_batch', { start_date: '2026-03-06', input_warehouse_id: wh, output_warehouse_id: wh, inputs: [{ item_id: paddy, qty_kg: 10 }] })),
+    stock: await ok(() => rpc('save_stock_adjustment', { adjustment_date: '2026-03-06', kind: 'GAIN', item_id: bran, warehouse_id: wh, qty_kg: 1, unit_cost: 1 })),
+    money: await ok(() => rpc('save_money_txn', { txn_date: '2026-03-06', txn_type: 'EXPENSE', money_account_id: cash, counter_account_id: salary, amount: 1 })),
+    books: +(await q(`select count(*) c from journal_lines`))[0].c > 0,
+    party: await ok(() => q(`insert into parties (name, types) values ('Role test ' || $1, '{CUSTOMER}')`, [role])),
+  }
+}
+const want = {
+  PURCHASER: { purchase: true, sale: false, production: false, stock: false, money: false, books: false, party: true },
+  SALES: { purchase: false, sale: true, production: false, stock: false, money: false, books: false, party: true },
+  PRODUCTION: { purchase: false, sale: false, production: true, stock: true, money: false, books: false, party: false },
+  ACCOUNTANT: { purchase: true, sale: true, production: true, stock: true, money: true, books: true, party: true },
+  OPERATOR: { purchase: true, sale: true, production: true, stock: true, money: false, books: false, party: true },
+}
+for (const [role, w] of Object.entries(want)) {
+  const got = await tryRole(role)
+  check(`${role} can do exactly its job`, JSON.stringify(got) === JSON.stringify(w), JSON.stringify(got))
+}
+await as(viewer)
+await expectError('only the super admin manages the team', () => q(`select public.invite_member('x@x.com', 'X', 'SALES')`), 'permission')
+
+// invitations
+await as(admin)
+check('invite for a new email', (await one(`select public.invite_member('Buyer@Mill.com', 'Buyer One', 'PURCHASER') r`)).r === 'INVITED')
 await db.exec(`reset role`)
+const buyer = '33333333-3333-3333-3333-333333333333'
+await q(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'buyer@mill.com', '{}')`, [buyer])
+const bp = await one(`select role, status, full_name, approved_by from profiles where id = $1`, [buyer])
+check('invited person is active with the invited role on sign-up', bp.role === 'PURCHASER' && bp.status === 'ACTIVE' && bp.full_name === 'Buyer One' && bp.approved_by === admin, JSON.stringify(bp))
+const late = '44444444-4444-4444-4444-444444444444'
+await q(`insert into auth.users (id, email) values ($1, 'late@mill.com')`, [late])
+await db.exec(`set role authenticated`); await as(admin)
+check('adding a member who already signed up approves them', (await one(`select public.invite_member('late@mill.com', 'Late', 'SALES') r`)).r === 'APPROVED'
+  && (await one(`select role, status from profiles where id = $1`, [late])).status === 'ACTIVE')
+await expectError('nobody can be invited as super admin', () => q(`select public.invite_member('z@z.com', 'Z', 'SUPER_ADMIN')`), 'Choose a role')
+
+// there is always a super admin
+await expectError('the last super admin cannot step down', () => q(`update profiles set role = 'ADMIN' where id = $1`, [admin]), 'always be one active super admin')
+await expectError('the last super admin cannot be blocked', () => q(`update profiles set status = 'BLOCKED' where id = $1`, [admin]), 'always be one active super admin')
+await q(`update profiles set status = 'BLOCKED' where id = $1`, [late])
+await as(late)
+check('blocked user sees nothing', +(await q(`select count(*) c from sales`))[0].c === 0)
+await db.exec(`reset role`); await as(admin)
 
 const audit = +(await one(`select count(*) c from audit_log`)).c
 check('audit log records changes', audit > 10, audit)

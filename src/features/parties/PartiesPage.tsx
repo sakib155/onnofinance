@@ -42,7 +42,7 @@ export function PartiesPage() {
         title={t('nav.parties')}
         subtitle={t('parties.subtitle')}
         actions={
-          can('editParties') && (
+          can('parties') && (
             <Button onClick={() => setEditing(null)}>
               <Plus className="size-4" />
               {t('parties.new')}
@@ -116,7 +116,7 @@ export function PartiesPage() {
               header: '',
               align: 'right',
               cell: (p) =>
-                can('editParties') && (
+                can('parties') && (
                   <Button
                     size="sm"
                     variant="ghost"

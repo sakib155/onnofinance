@@ -109,7 +109,7 @@ export function ItemsPage() {
         title={t('nav.items')}
         subtitle={t('items.subtitle')}
         actions={
-          can('editSetup') && (
+          can('setup') && (
             <Button onClick={() => setEditing(null)}>
               <Plus className="size-4" />
               {t('items.new')}
@@ -122,7 +122,7 @@ export function ItemsPage() {
           loading={isLoading}
           rows={data}
           rowKey={(i) => i.id}
-          onRowClick={can('editSetup') ? setEditing : undefined}
+          onRowClick={can('setup') ? setEditing : undefined}
           rowClassName={(i) => (i.is_active ? undefined : 'opacity-50')}
           columns={[
             { key: 'code', header: t('common.code'), cell: (i) => <span className="text-slate-500">{i.code}</span> },

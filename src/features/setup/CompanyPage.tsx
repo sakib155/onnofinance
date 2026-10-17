@@ -38,7 +38,7 @@ function CompanyForm({ initial }: { initial: Company }) {
     ),
   )
   const set = (k: keyof Company) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value })
-  const readOnly = !can('admin')
+  const readOnly = !can('company')
 
   return (
     <>

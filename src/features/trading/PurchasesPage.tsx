@@ -45,7 +45,7 @@ export function PurchasesPage() {
         title={t('nav.purchases')}
         subtitle={t('trading.purchasesSubtitle')}
         actions={
-          can('trade') && (
+          can('purchase') && (
             <ButtonLink to="/purchases/new">
               <Plus className="size-4" />
               {t('trading.newPurchase')}
@@ -136,13 +136,13 @@ export function PurchaseView() {
         subtitle={date(p.purchase_date)}
         actions={
           <>
-            {can('trade') && (
+            {can('purchase') && (
               <ButtonLink to={`/purchases/${p.id}/edit`} variant="secondary">
                 <Pencil className="size-4" />
                 {t('common.edit')}
               </ButtonLink>
             )}
-            {can('deleteDocs') && (
+            {can('deleteDoc') && (
               <Button variant="secondary" onClick={() => setDeleting(true)}>
                 <Trash2 className="size-4" />
                 {t('common.delete')}

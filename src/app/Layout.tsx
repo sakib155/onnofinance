@@ -30,7 +30,17 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { setLanguage } from '@/i18n'
 import { useAuth, useCan, type Permission } from './auth'
 
-type NavItem = { to: string; label: string; icon: LucideIcon; perm?: Permission }
+type NavItem = { to: string; label: string; icon: LucideIcon; perm?: Permission[] }
+
+// Who can open each area: anyone who works in it, plus anyone who reads the books
+export const VIEW = {
+  purchases: ['purchase', 'books'],
+  sales: ['sale', 'books'],
+  returns: ['purchaseReturn', 'saleReturn', 'books'],
+  production: ['production', 'books'],
+  money: ['money', 'books'],
+  parties: ['parties', 'books'],
+} satisfies Record<string, Permission[]>
 type NavGroup = { label: string; items: NavItem[] }
 
 const nav: NavGroup[] = [
@@ -38,12 +48,12 @@ const nav: NavGroup[] = [
   {
     label: 'nav.trading',
     items: [
-      { to: '/purchases', label: 'nav.purchases', icon: ArrowDownToLine },
-      { to: '/sales', label: 'nav.sales', icon: ShoppingCart },
-      { to: '/returns', label: 'nav.returns', icon: Undo2 },
+      { to: '/purchases', label: 'nav.purchases', icon: ArrowDownToLine, perm: VIEW.purchases },
+      { to: '/sales', label: 'nav.sales', icon: ShoppingCart, perm: VIEW.sales },
+      { to: '/returns', label: 'nav.returns', icon: Undo2, perm: VIEW.returns },
     ],
   },
-  { label: 'nav.mill', items: [{ to: '/production', label: 'nav.production', icon: Factory }] },
+  { label: 'nav.mill', items: [{ to: '/production', label: 'nav.production', icon: Factory, perm: VIEW.production }] },
   {
     label: 'nav.stock',
     items: [
@@ -55,18 +65,18 @@ const nav: NavGroup[] = [
   {
     label: 'nav.money',
     items: [
-      { to: '/money', label: 'nav.transactions', icon: Banknote },
-      { to: '/money/cheques', label: 'nav.cheques', icon: Receipt },
-      { to: '/accounts', label: 'nav.accounts', icon: Landmark },
+      { to: '/money', label: 'nav.transactions', icon: Banknote, perm: VIEW.money },
+      { to: '/money/cheques', label: 'nav.cheques', icon: Receipt, perm: VIEW.money },
+      { to: '/accounts', label: 'nav.accounts', icon: Landmark, perm: VIEW.money },
     ],
   },
-  { label: 'nav.people', items: [{ to: '/parties', label: 'nav.parties', icon: UsersRound }] },
+  { label: 'nav.people', items: [{ to: '/parties', label: 'nav.parties', icon: UsersRound, perm: VIEW.parties }] },
   {
     label: 'nav.reports',
     items: [
       { to: '/reports', label: 'nav.allReports', icon: BarChart3 },
-      { to: '/reports/dues', label: 'nav.dues', icon: FileText, perm: 'books' },
-      { to: '/reports/profit-loss', label: 'nav.profitLoss', icon: BookOpen, perm: 'books' },
+      { to: '/reports/dues', label: 'nav.dues', icon: FileText, perm: ['books'] },
+      { to: '/reports/profit-loss', label: 'nav.profitLoss', icon: BookOpen, perm: ['books'] },
     ],
   },
   {
@@ -74,9 +84,9 @@ const nav: NavGroup[] = [
     items: [
       { to: '/setup/items', label: 'nav.items', icon: Package },
       { to: '/setup/warehouses', label: 'nav.warehouses', icon: Warehouse },
-      { to: '/setup/company', label: 'nav.company', icon: Building2 },
-      { to: '/setup/team', label: 'nav.team', icon: Users, perm: 'admin' },
-      { to: '/setup/audit', label: 'nav.audit', icon: History, perm: 'admin' },
+      { to: '/setup/company', label: 'nav.company', icon: Building2, perm: ['company'] },
+      { to: '/setup/team', label: 'nav.team', icon: Users, perm: ['team'] },
+      { to: '/setup/audit', label: 'nav.audit', icon: History, perm: ['audit'] },
     ],
   },
 ]
@@ -94,7 +104,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
       {nav.map((g) => {
-        const items = g.items.filter((i) => !i.perm || can(i.perm))
+        const items = g.items.filter((i) => !i.perm || can(...i.perm))
         if (!items.length) return null
         return (
           <div key={g.label || 'home'} className="mb-3">

@@ -1,11 +1,15 @@
-export type Role = 'ADMIN' | 'ACCOUNTANT' | 'OPERATOR' | 'VIEWER'
+export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'PURCHASER', 'SALES', 'PRODUCTION', 'OPERATOR', 'VIEWER'] as const
+export type Role = (typeof ROLES)[number]
+export type MemberStatus = 'PENDING' | 'ACTIVE' | 'BLOCKED'
 
 export type Profile = {
   id: string
   full_name: string
   email: string | null
   role: Role
-  is_active: boolean
+  status: MemberStatus
+  approved_by: string | null
+  approved_at: string | null
   created_at: string
 }
 

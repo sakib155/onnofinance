@@ -56,28 +56,32 @@ export function Dashboard() {
         title={t('dashboard.greeting', { name: profile?.full_name?.split(' ')[0] || '' })}
         subtitle={date(today())}
         actions={
-          can('trade') && (
-            <>
+          <>
+            {can('purchase') && (
               <ButtonLink to="/purchases/new" variant="secondary">
                 <ArrowDownToLine className="size-4" />
                 {t('trading.newPurchase')}
               </ButtonLink>
+            )}
+            {can('sale') && (
               <ButtonLink to="/sales/new" variant="secondary">
                 <ShoppingCart className="size-4" />
                 {t('trading.newSale')}
               </ButtonLink>
+            )}
+            {can('production') && (
               <ButtonLink to="/production/new" variant="secondary">
                 <Factory className="size-4" />
                 {t('production.newBatch')}
               </ButtonLink>
-              {can('money') && (
-                <ButtonLink to="/money" variant="secondary">
-                  <Banknote className="size-4" />
-                  {t('nav.transactions')}
-                </ButtonLink>
-              )}
-            </>
-          )
+            )}
+            {can('money') && (
+              <ButtonLink to="/money" variant="secondary">
+                <Banknote className="size-4" />
+                {t('nav.transactions')}
+              </ButtonLink>
+            )}
+          </>
         }
       />
       {books && (

@@ -66,22 +66,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => useContext(AuthContext)
 
-// What each role may do. The database enforces the same rules; this only hides what can't be used.
+// What each role may do. Mirrors public.perm_roles() in the database, which enforces it;
+// the app uses it to show only the menus and buttons a role can use.
+const R = {
+  all: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'],
+} as const
 export const permissions = {
-  editParties: ['ADMIN', 'ACCOUNTANT', 'OPERATOR'],
-  editSetup: ['ADMIN', 'ACCOUNTANT'],
-  trade: ['ADMIN', 'ACCOUNTANT', 'OPERATOR'],
-  deleteDocs: ['ADMIN', 'ACCOUNTANT'],
-  returns: ['ADMIN', 'ACCOUNTANT'],
-  money: ['ADMIN', 'ACCOUNTANT'],
-  books: ['ADMIN', 'ACCOUNTANT', 'VIEWER'],
-  reopenBatch: ['ADMIN', 'ACCOUNTANT'],
-  admin: ['ADMIN'],
-} satisfies Record<string, Role[]>
+  purchase: [...R.all, 'PURCHASER', 'OPERATOR'],
+  sale: [...R.all, 'SALES', 'OPERATOR'],
+  production: [...R.all, 'PRODUCTION', 'OPERATOR'],
+  stock: [...R.all, 'PRODUCTION', 'OPERATOR'],
+  purchaseReturn: [...R.all, 'PURCHASER'],
+  saleReturn: [...R.all, 'SALES'],
+  parties: [...R.all, 'PURCHASER', 'SALES', 'OPERATOR'],
+  deleteDoc: [...R.all],
+  reopenBatch: [...R.all],
+  money: [...R.all],
+  setup: [...R.all],
+  books: [...R.all, 'VIEWER'],
+  company: ['SUPER_ADMIN', 'ADMIN'],
+  audit: ['SUPER_ADMIN', 'ADMIN'],
+  deleteMaster: ['SUPER_ADMIN', 'ADMIN'],
+  team: ['SUPER_ADMIN'],
+} satisfies Record<string, readonly Role[]>
 
 export type Permission = keyof typeof permissions
 
 export function useCan() {
   const { profile } = useAuth()
-  return (p: Permission) => Boolean(profile?.is_active && (permissions[p] as Role[]).includes(profile.role))
+  return (...ps: Permission[]) =>
+    Boolean(profile?.status === 'ACTIVE' && ps.some((p) => (permissions[p] as readonly Role[]).includes(profile.role)))
 }
