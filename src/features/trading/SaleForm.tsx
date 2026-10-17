@@ -39,6 +39,7 @@ export type Sale = {
   received_cheque_no: string | null
   received_cheque_date: string | null
   cost_amount: number
+  created_by: string | null
   created_at: string
   lines?: SaleLine[]
 }

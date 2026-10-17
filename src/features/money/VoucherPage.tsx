@@ -1,12 +1,13 @@
 import { ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCan } from '@/app/auth'
 import { PrintButton } from '@/components/common'
-import { PrintHeader } from '@/components/PrintHeader'
+import { DocPage, SignatureFooter, useUserName } from '@/components/doc/Document'
+import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
-import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
+import { Badge, Loading, PageHeader } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { rpc, useData, useSave } from '@/lib/data'
@@ -30,6 +31,8 @@ export function VoucherPage() {
   )
   const del = useSave(() => rpc('delete_money_txn', { p_id: id }))
   const status = useSave((s: string) => rpc('set_cheque_status', { p_id: id, p_status: s }))
+  const createdBy = useUserName(v?.created_by)
+  const ref = useRef<HTMLDivElement>(null)
 
   if (isLoading || !v) return <Loading />
   // recorded together with a sale or purchase: changed from there, not here
@@ -86,42 +89,59 @@ export function VoucherPage() {
                 </Button>
               </>
             )}
+            <PdfButton target={ref} filename={`${v.txn_no}.pdf`} />
             <PrintButton />
           </>
         }
       />
-      <Card className="print-area mx-auto max-w-2xl">
-        <PrintHeader title={`${t(`money.type.${v.txn_type}`)} ${t('money.voucher')} · ${v.txn_no}`} />
-        <dl className="divide-y divide-slate-100 text-sm">
-          {rows.map(([k, val]) => (
-            <div key={k} className="flex justify-between gap-4 py-2">
-              <dt className="text-slate-500">{k}</dt>
-              <dd className="text-right font-medium">{val}</dd>
-            </div>
-          ))}
-          <div className="flex justify-between gap-4 py-3 text-base">
-            <dt className="font-semibold">{t('common.amount')}</dt>
-            <dd className="font-semibold tabular-nums">৳ {money(v.amount)}</dd>
-          </div>
-        </dl>
-        {!!settled?.length && (
-          <div className="mt-4">
-            <div className="mb-1 text-xs font-medium text-slate-500">{t('money.settledBills')}</div>
-            {settled.map((s) => (
-              <div key={s.id} className="flex justify-between py-1 text-sm">
-                <Link to={s.sale ? `/sales/${s.sale.id}` : `/purchases/${s.purchase?.id}`} className="text-brand-800 hover:underline">
-                  {s.sale?.sale_no ?? s.purchase?.purchase_no}
-                </Link>
-                <span className="tabular-nums">{money(s.amount)}</span>
+      <div className="overflow-x-auto" ref={ref}>
+        <DocPage
+          title={`${t(`money.type.${v.txn_type}`)} ${t('money.voucher')}`}
+          meta={
+            <>
+              <div>
+                {t('common.voucherNo')}: <b>{v.txn_no}</b>
+              </div>
+              <div>
+                {t('common.date')}: {date(v.txn_date)}
+              </div>
+            </>
+          }
+          footer={
+            <SignatureFooter
+              createdBy={createdBy}
+              createdAt={v.created_at}
+              signers={v.party_id ? [isInflow(v.txn_type) ? t('print.paidBy') : t('print.receivedBy')] : []}
+            />
+          }
+        >
+          <dl className="divide-y divide-slate-200 rounded border border-slate-200 text-sm">
+            {rows.map(([k, val]) => (
+              <div key={k} className="flex justify-between gap-4 px-3 py-2">
+                <dt className="text-slate-500">{k}</dt>
+                <dd className="text-right font-medium">{val}</dd>
               </div>
             ))}
-          </div>
-        )}
-        <div className="mt-16 hidden grid-cols-2 gap-8 text-center text-xs print:grid">
-          <div className="border-t border-slate-400 pt-1">{t('print.receivedBy')}</div>
-          <div className="border-t border-slate-400 pt-1">{t('print.authorisedBy')}</div>
-        </div>
-      </Card>
+            <div className="flex justify-between gap-4 bg-slate-50 px-3 py-3 text-base">
+              <dt className="font-semibold">{t('common.amount')}</dt>
+              <dd className="font-semibold tabular-nums">৳ {money(v.amount)}</dd>
+            </div>
+          </dl>
+          {!!settled?.length && (
+            <div className="mt-4">
+              <div className="mb-1 text-xs font-semibold text-slate-500 uppercase">{t('money.settledBills')}</div>
+              {settled.map((st) => (
+                <div key={st.id} className="flex justify-between border-b border-slate-100 py-1 text-sm">
+                  <Link to={st.sale ? `/sales/${st.sale.id}` : `/purchases/${st.purchase?.id}`} className="text-brand-800">
+                    {st.sale?.sale_no ?? st.purchase?.purchase_no}
+                  </Link>
+                  <span className="tabular-nums">{money(st.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </DocPage>
+      </div>
       {editing && <MoneyForm open txn={v} onClose={() => setEditing(false)} />}
       <ConfirmModal
         open={deleting}

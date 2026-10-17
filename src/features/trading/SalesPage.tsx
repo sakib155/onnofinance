@@ -1,9 +1,12 @@
-import { ArrowLeft, Download, Pencil, Plus, Trash2 } from 'lucide-react'
+import clsx from 'clsx'
+import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useCan } from '@/app/auth'
 import { DateRange, nameOf, PrintButton } from '@/components/common'
+import { DocPage, DocRow, SignatureFooter, td, th, useUserName } from '@/components/doc/Document'
+import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Input } from '@/components/ui/form'
 import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
@@ -13,7 +16,6 @@ import { errorMessage, useToast } from '@/components/ui/toast'
 import { useCompany } from '@/features/setup/company'
 import { rpc, useData, useSave } from '@/lib/data'
 import { date, money, monthStart, num, qty, today } from '@/lib/format'
-import { downloadPdf } from '@/lib/pdf'
 import { supabase } from '@/lib/supabase'
 import type { Item } from '@/lib/types'
 import type { Sale, SaleLine } from './SaleForm'
@@ -102,16 +104,181 @@ type SaleDetail = Sale & {
   warehouse: { name: string }
 }
 
+type DocKind = 'invoice' | 'challan'
+
+function InvoiceDoc({ s, dues, balance, createdBy }: { s: SaleDetail; dues?: { total_paid: number; due_amount: number }; balance?: number; createdBy: string }) {
+  const { t } = useTranslation()
+  const { data: company } = useCompany()
+  const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no)
+  return (
+    <DocPage
+      title={t('trading.invoiceTitle')}
+      meta={
+        <>
+          <div>
+            {t('trading.invoiceNo')}: <b>{s.sale_no}</b>
+          </div>
+          <div>
+            {t('common.date')}: {date(s.sale_date)}
+          </div>
+          {s.reference && (
+            <div>
+              {t('common.reference')}: {s.reference}
+            </div>
+          )}
+        </>
+      }
+      footer={<SignatureFooter createdBy={createdBy} createdAt={s.created_at} signers={[t('print.customerSignature')]} />}
+    >
+      <PartyAndDelivery s={s} />
+      <table className="w-full border-collapse text-[12px]">
+        <thead>
+          <tr>
+            <th className={th}>#</th>
+            <th className={th}>{t('common.item')}</th>
+            <th className={`${th} text-right`}>{t('unit.bags')}</th>
+            <th className={`${th} text-right`}>{t('trading.weightKg')}</th>
+            <th className={`${th} text-right`}>{t('trading.rate')}</th>
+            <th className={`${th} text-right`}>{t('common.amount')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l, i) => (
+            <tr key={l.id}>
+              <td className={td}>{i + 1}</td>
+              <td className={`${td} font-medium`}>
+                {nameOf(l.item)}
+                {l.warehouse && l.warehouse_id !== s.warehouse_id && (
+                  <div className="text-[11px] font-normal text-slate-500">{t('trading.fromGodown', { name: l.warehouse.name })}</div>
+                )}
+              </td>
+              <td className={`${td} text-right`}>{num(l.bags) ? `${qty(l.bags)} × ${qty(l.bag_size_kg)} ${t('unit.kg')}` : ''}</td>
+              <td className={`${td} text-right`}>{qty(l.qty_kg)}</td>
+              <td className={`${td} text-right`}>
+                {money(l.rate)}/{l.rate_unit === 'BAG' ? t('unit.bag') : t('unit.kg')}
+              </td>
+              <td className={`${td} text-right`}>{money(l.amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-3 ml-auto w-72 space-y-1 text-[12px]">
+        <DocRow label={t('trading.goodsValue')} value={money(s.goods_amount)} />
+        {num(s.transport_charge) > 0 && <DocRow label={t('trading.transportCharge')} value={money(s.transport_charge)} />}
+        {num(s.labour_charge) > 0 && <DocRow label={t('trading.labourCharge')} value={money(s.labour_charge)} />}
+        {num(s.discount) > 0 && <DocRow label={t('trading.discount')} value={`- ${money(s.discount)}`} />}
+        <DocRow label={t('trading.invoiceTotal')} value={money(s.total_amount)} strong />
+        <DocRow label={t('common.paid')} value={money(dues?.total_paid)} />
+        <DocRow label={t('trading.dueOnInvoice')} value={money(dues?.due_amount)} strong />
+        {balance != null && Math.abs(num(balance) - num(dues?.due_amount)) > 0.005 && <DocRow label={t('trading.customerTotalDue')} value={money(balance)} />}
+      </div>
+      {s.notes && <p className="mt-4 text-xs text-slate-600">{s.notes}</p>}
+      {company?.invoice_footer && <p className="mt-4 text-xs text-slate-500">{company.invoice_footer}</p>}
+    </DocPage>
+  )
+}
+
+// Delivery challan for the driver/transport: goods, bags and weights, no prices
+function ChallanDoc({ s, createdBy }: { s: SaleDetail; createdBy: string }) {
+  const { t } = useTranslation()
+  const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no)
+  const totalBags = lines.reduce((a, l) => a + num(l.bags), 0)
+  const totalKg = lines.reduce((a, l) => a + num(l.qty_kg), 0)
+  return (
+    <DocPage
+      title={t('trading.challanTitle')}
+      meta={
+        <>
+          <div>
+            {t('trading.challanNo')}: <b>{s.sale_no}</b>
+          </div>
+          <div>
+            {t('common.date')}: {date(s.sale_date)}
+          </div>
+        </>
+      }
+      footer={<SignatureFooter createdBy={createdBy} createdAt={s.created_at} signers={[t('print.driverSignature'), t('print.receivedBy')]} />}
+    >
+      <PartyAndDelivery s={s} big />
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr>
+            <th className={th}>#</th>
+            <th className={th}>{t('common.item')}</th>
+            <th className={th}>{t('stock.warehouse')}</th>
+            <th className={`${th} text-right`}>{t('unit.bags')}</th>
+            <th className={`${th} text-right`}>{t('trading.bagSize')}</th>
+            <th className={`${th} text-right`}>{t('trading.weightKg')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l, i) => (
+            <tr key={l.id}>
+              <td className={td}>{i + 1}</td>
+              <td className={`${td} font-medium`}>{nameOf(l.item)}</td>
+              <td className={td}>{l.warehouse?.name ?? s.warehouse.name}</td>
+              <td className={`${td} text-right`}>{num(l.bags) ? qty(l.bags) : '—'}</td>
+              <td className={`${td} text-right`}>{num(l.bag_size_kg) ? qty(l.bag_size_kg) : '—'}</td>
+              <td className={`${td} text-right`}>{qty(l.qty_kg)}</td>
+            </tr>
+          ))}
+          <tr className="font-semibold">
+            <td className={td} colSpan={3}>
+              {t('common.total')}
+            </td>
+            <td className={`${td} text-right`}>{qty(totalBags)}</td>
+            <td className={td} />
+            <td className={`${td} text-right`}>{qty(totalKg)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="mt-4 text-xs text-slate-600">{t('trading.challanNote')}</p>
+      {s.notes && <p className="mt-2 text-xs text-slate-600">{s.notes}</p>}
+    </DocPage>
+  )
+}
+
+// Who the goods go to, and how they travel
+function PartyAndDelivery({ s, big }: { s: SaleDetail; big?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="rounded border border-slate-200 p-3">
+        <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.billTo')}</div>
+        <div className={big ? 'text-base font-semibold' : 'font-semibold'}>{nameOf(s.customer)}</div>
+        <div className="text-xs text-slate-600">{s.customer.address}</div>
+        <div className="text-xs text-slate-600">{s.customer.phone}</div>
+      </div>
+      <div className="rounded border border-slate-200 p-3 text-xs">
+        <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.delivery')}</div>
+        <div>
+          {t('trading.vehicleNo')}: <b className={big ? 'text-sm' : ''}>{s.vehicle_no || '—'}</b>
+        </div>
+        <div>
+          {t('trading.driver')}: {s.driver_name || '—'} {s.driver_phone && `(${s.driver_phone})`}
+        </div>
+        {s.broker && (
+          <div>
+            {t('trading.broker')}: {s.broker.name}
+          </div>
+        )}
+        <div>
+          {t('trading.deliverFrom')}: {s.warehouse.name}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SaleView() {
   const { id } = useParams()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const can = useCan()
   const toast = useToast()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [deleting, setDeleting] = useState(false)
-  const [pdfBusy, setPdfBusy] = useState(false)
-  const { data: company } = useCompany()
+  const [kind, setKind] = useState<DocKind>('invoice')
   const { data: s, isLoading } = useData<SaleDetail>(['sale-view', id], () =>
     supabase
       .from('sales')
@@ -129,23 +296,10 @@ export function SaleView() {
     () => supabase.from('v_party_balances').select('balance').eq('id', s!.customer_id).single(),
     { enabled: Boolean(s?.customer_id) },
   )
+  const createdBy = useUserName(s?.created_by)
   const del = useSave(() => rpc('delete_sale', { p_id: id }))
   if (isLoading || !s) return <Loading />
-  const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no)
   const profit = num(s.goods_amount) - num(s.discount) - num(s.cost_amount)
-  const companyName = i18n.language === 'bn' && company?.name_bn ? company.name_bn : company?.name
-
-  const pdf = async () => {
-    if (!ref.current) return
-    setPdfBusy(true)
-    try {
-      await downloadPdf(ref.current, `${s.sale_no}.pdf`)
-    } catch (e) {
-      toast(`${t('trading.pdfFailed')}: ${errorMessage(e)}`, 'error')
-    } finally {
-      setPdfBusy(false)
-    }
-  }
 
   return (
     <>
@@ -173,122 +327,24 @@ export function SaleView() {
                 {t('common.delete')}
               </Button>
             )}
-            <Button variant="secondary" onClick={pdf} loading={pdfBusy}>
-              <Download className="size-4" />
-              PDF
-            </Button>
+            <PdfButton target={ref} filename={`${s.sale_no}${kind === 'challan' ? '-challan' : ''}.pdf`} label={kind === 'challan' ? t('trading.challanPdf') : t('trading.invoicePdf')} />
             <PrintButton />
           </>
         }
       />
-      <div className="overflow-x-auto">
-        <div ref={ref} className="print-area mx-auto w-[794px] bg-white p-10 text-[13px] text-slate-800 shadow-sm">
-          {company?.header_image_url ? (
-            <img src={company.header_image_url} alt="" className="mb-4 w-full" crossOrigin="anonymous" />
-          ) : (
-            <div className="mb-4 border-b-2 border-brand-800 pb-3">
-              <div className="text-2xl font-bold text-brand-900">{companyName}</div>
-              <div className="text-xs text-slate-600">{[company?.address, company?.phone, company?.email].filter(Boolean).join(' · ')}</div>
-            </div>
-          )}
-          <div className="mb-4 flex items-start justify-between">
-            <div className="text-lg font-bold tracking-wide">{t('trading.invoiceTitle')}</div>
-            <div className="text-right text-xs">
-              <div>
-                {t('trading.invoiceNo')}: <b>{s.sale_no}</b>
-              </div>
-              <div>
-                {t('common.date')}: {date(s.sale_date)}
-              </div>
-              {s.reference && (
-                <div>
-                  {t('common.reference')}: {s.reference}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mb-4 grid grid-cols-2 gap-4">
-            <div className="rounded border border-slate-200 p-3">
-              <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.billTo')}</div>
-              <Link to={`/parties/${s.customer.id}`} className="font-semibold">
-                {nameOf(s.customer)}
-              </Link>
-              <div className="text-xs text-slate-600">{s.customer.address}</div>
-              <div className="text-xs text-slate-600">{s.customer.phone}</div>
-            </div>
-            <div className="rounded border border-slate-200 p-3 text-xs">
-              <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.delivery')}</div>
-              {s.vehicle_no && (
-                <div>
-                  {t('trading.vehicleNo')}: <b>{s.vehicle_no}</b>
-                </div>
-              )}
-              {s.driver_name && (
-                <div>
-                  {t('trading.driver')}: {s.driver_name} {s.driver_phone && `(${s.driver_phone})`}
-                </div>
-              )}
-              {s.broker && (
-                <div>
-                  {t('trading.broker')}: {s.broker.name}
-                </div>
-              )}
-              <div>
-                {t('trading.deliverFrom')}: {s.warehouse.name}
-              </div>
-            </div>
-          </div>
-          <table className="w-full border-collapse text-[12px]">
-            <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="border border-slate-200 px-2 py-1.5">#</th>
-                <th className="border border-slate-200 px-2 py-1.5">{t('common.item')}</th>
-                <th className="border border-slate-200 px-2 py-1.5 text-right">{t('unit.bags')}</th>
-                <th className="border border-slate-200 px-2 py-1.5 text-right">{t('trading.weightKg')}</th>
-                <th className="border border-slate-200 px-2 py-1.5 text-right">{t('trading.rate')}</th>
-                <th className="border border-slate-200 px-2 py-1.5 text-right">{t('common.amount')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l, i) => (
-                <tr key={l.id}>
-                  <td className="border border-slate-200 px-2 py-1.5">{i + 1}</td>
-                  <td className="border border-slate-200 px-2 py-1.5 font-medium">
-                    {nameOf(l.item)}
-                    {l.warehouse && l.warehouse_id !== s.warehouse_id && (
-                      <div className="text-[11px] font-normal text-slate-500">{t('trading.fromGodown', { name: l.warehouse.name })}</div>
-                    )}
-                  </td>
-                  <td className="border border-slate-200 px-2 py-1.5 text-right">{num(l.bags) ? `${qty(l.bags)} × ${qty(l.bag_size_kg)} ${t('unit.kg')}` : ''}</td>
-                  <td className="border border-slate-200 px-2 py-1.5 text-right">{qty(l.qty_kg)}</td>
-                  <td className="border border-slate-200 px-2 py-1.5 text-right">
-                    {money(l.rate)}/{l.rate_unit === 'BAG' ? t('unit.bag') : t('unit.kg')}
-                  </td>
-                  <td className="border border-slate-200 px-2 py-1.5 text-right">{money(l.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="mt-3 ml-auto w-72 space-y-1 text-[12px]">
-            <Row label={t('trading.goodsValue')} value={money(s.goods_amount)} />
-            {num(s.transport_charge) > 0 && <Row label={t('trading.transportCharge')} value={money(s.transport_charge)} />}
-            {num(s.labour_charge) > 0 && <Row label={t('trading.labourCharge')} value={money(s.labour_charge)} />}
-            {num(s.discount) > 0 && <Row label={t('trading.discount')} value={`- ${money(s.discount)}`} />}
-            <Row label={t('trading.invoiceTotal')} value={money(s.total_amount)} strong />
-            <Row label={t('common.paid')} value={money(dues?.total_paid)} />
-            <Row label={t('trading.dueOnInvoice')} value={money(dues?.due_amount)} strong />
-            {party && Math.abs(num(party.balance) - num(dues?.due_amount)) > 0.005 && (
-              <Row label={t('trading.customerTotalDue')} value={money(party.balance)} />
-            )}
-          </div>
-          {s.notes && <p className="mt-4 text-xs text-slate-600">{s.notes}</p>}
-          {company?.invoice_footer && <p className="mt-4 text-xs text-slate-500">{company.invoice_footer}</p>}
-          <div className="mt-16 grid grid-cols-3 gap-8 text-center text-[11px]">
-            <div className="border-t border-slate-400 pt-1">{t('print.customerSignature')}</div>
-            <div className="border-t border-slate-400 pt-1">{t('print.preparedBy')}</div>
-            <div className="border-t border-slate-400 pt-1">{t('print.authorisedBy')}</div>
-          </div>
-        </div>
+      <div className="no-print mb-3 flex gap-1 rounded-lg bg-slate-100 p-1 text-sm sm:w-fit">
+        {(['invoice', 'challan'] as DocKind[]).map((k) => (
+          <button
+            key={k}
+            onClick={() => setKind(k)}
+            className={clsx('flex-1 rounded-md px-5 py-1.5', kind === k ? 'bg-white font-medium shadow-sm' : 'text-slate-600')}
+          >
+            {k === 'invoice' ? t('trading.invoiceTab') : t('trading.challanTab')}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-x-auto" ref={ref}>
+        {kind === 'invoice' ? <InvoiceDoc s={s} dues={dues} balance={party?.balance} createdBy={createdBy} /> : <ChallanDoc s={s} createdBy={createdBy} />}
       </div>
       <ConfirmModal
         open={deleting}
@@ -310,14 +366,5 @@ export function SaleView() {
         }
       />
     </>
-  )
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className={strong ? 'flex justify-between border-t border-slate-300 pt-1 font-semibold' : 'flex justify-between'}>
-      <span>{label}</span>
-      <span className="tabular-nums">{value}</span>
-    </div>
   )
 }

@@ -37,6 +37,7 @@ export type Purchase = {
   paid_cheque_no: string | null
   paid_cheque_date: string | null
   total_cost: number
+  created_by: string | null
   created_at: string
   lines?: PurchaseLine[]
 }

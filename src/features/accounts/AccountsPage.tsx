@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
 import { LedgerView } from '@/features/reports/Ledger'
+import { StatementPdfButton } from '@/features/reports/StatementPdf'
 import { unwrap, useAccounts, useSave } from '@/lib/data'
 import { num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -262,7 +263,22 @@ export function AccountLedgerPage() {
           </span>
         }
         subtitle={t(`accounts.types.${a.type}`)}
-        actions={<PrintButton />}
+        actions={
+          <>
+            <StatementPdfButton
+              subject={{
+                title: money_ ? (a.subtype === 'CASH' ? t('reports.cashBook') : t('reports.bankBook')) : t('ledger.title'),
+                name: nameOf(a),
+                lines: [a.bank_name, a.account_no],
+              }}
+              account={a.id}
+              debitLabel={money_ ? t('money.in') : t('ledger.debit')}
+              creditLabel={money_ ? t('money.out') : t('ledger.credit')}
+              filename={`${a.code}_${a.name.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`}
+            />
+            <PrintButton />
+          </>
+        }
       />
       <LedgerView
         account={a.id}

@@ -1,10 +1,11 @@
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCan } from '@/app/auth'
 import { DateRange, nameOf, PrintButton } from '@/components/common'
-import { PrintHeader } from '@/components/PrintHeader'
+import { DocPage, DocRow, SignatureFooter, td, th, useUserName } from '@/components/doc/Document'
+import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Input } from '@/components/ui/form'
 import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
@@ -15,7 +16,6 @@ import { rpc, useData, useSave } from '@/lib/data'
 import { date, money, monthStart, num, qty, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { Item } from '@/lib/types'
-import { SumRow } from './LinesEditor'
 import type { Purchase, PurchaseLine } from './PurchaseForm'
 
 type PurchaseRow = Purchase & { supplier_name: string; supplier_name_bn: string | null; total_paid: number; due_amount: number }
@@ -117,6 +117,8 @@ export function PurchaseView() {
   const { data: dues } = useData<{ total_paid: number; due_amount: number }>(['purchase-dues', id], () =>
     supabase.from('v_purchase_dues').select('total_paid, due_amount').eq('id', id!).single(),
   )
+  const createdBy = useUserName(p?.created_by)
+  const ref = useRef<HTMLDivElement>(null)
   const del = useSave(() => rpc('delete_purchase', { p_id: id }))
   if (isLoading || !p) return <Loading />
   const lines = [...p.lines].sort((a, b) => a.line_no - b.line_no)
@@ -148,70 +150,109 @@ export function PurchaseView() {
                 {t('common.delete')}
               </Button>
             )}
+            <PdfButton target={ref} filename={`${p.purchase_no}.pdf`} />
             <PrintButton />
           </>
         }
       />
-      <Card className="print-area">
-        <PrintHeader title={`${t('trading.purchaseBill')} · ${p.purchase_no}`} />
-        <div className="mb-4 grid gap-4 text-sm sm:grid-cols-3">
-          <div>
-            <div className="text-xs text-slate-500">{t('trading.supplier')}</div>
-            <Link to={`/parties/${p.supplier.id}`} className="font-medium text-brand-800 hover:underline">
-              {nameOf(p.supplier)}
-            </Link>
-            <div className="text-xs text-slate-500">{[p.supplier.phone, p.supplier.address].filter(Boolean).join(' · ')}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">{t('trading.receiveInto')}</div>
-            <div>{nameOf(p.warehouse)}</div>
-            {p.broker && <div className="text-xs text-slate-500">{t('trading.broker')}: {p.broker.name}</div>}
-          </div>
-          <div>
-            {p.vehicle_no && <div>{t('trading.vehicleNo')}: {p.vehicle_no}</div>}
-            {p.reference && <div>{t('common.reference')}: {p.reference}</div>}
-            <div>{t('common.date')}: {date(p.purchase_date)}</div>
-          </div>
-        </div>
-        <Table
-          rows={lines}
-          rowKey={(l) => l.id}
-          columns={[
-            {
-              key: 'item',
-              header: t('common.item'),
-              cell: (l) => (
+      <div className="overflow-x-auto" ref={ref}>
+        <DocPage
+          title={t('trading.purchaseBill')}
+          meta={
+            <>
+              <div>
+                {t('common.billNo')}: <b>{p.purchase_no}</b>
+              </div>
+              <div>
+                {t('common.date')}: {date(p.purchase_date)}
+              </div>
+              {p.reference && (
                 <div>
-                  <div className="font-medium">{nameOf(l.item)}</div>
-                  {l.lot && <div className="text-xs text-slate-500">{l.lot.lot_no}</div>}
+                  {t('common.reference')}: {p.reference}
                 </div>
-              ),
-            },
-            { key: 'bags', header: t('unit.bags'), align: 'right', cell: (l) => (num(l.bags) ? `${qty(l.bags)} × ${qty(l.bag_size_kg)}` : '') },
-            { key: 'gross', header: t('trading.grossKg'), align: 'right', cell: (l) => qty(l.gross_kg) },
-            { key: 'ded', header: t('trading.deductionKg'), align: 'right', cell: (l) => (num(l.deduction_kg) ? qty(l.deduction_kg) : '') },
-            { key: 'net', header: t('trading.netKg'), align: 'right', cell: (l) => qty(l.net_kg) },
-            { key: 'rate', header: t('trading.rate'), align: 'right', cell: (l) => `${money(l.rate)}/${l.rate_unit === 'BAG' ? t('unit.bag') : t('unit.kg')}` },
-            { key: 'amt', header: t('common.amount'), align: 'right', cell: (l) => money(l.amount) },
-            { key: 'cost', header: t('trading.costPerKg'), align: 'right', className: 'no-print', cell: (l) => <span className="text-slate-500">{money(l.unit_cost)}</span> },
-          ]}
-        />
-        <div className="mt-4 ml-auto max-w-sm space-y-1.5">
-          <SumRow label={t('trading.goodsValue')} value={money(p.goods_amount)} />
-          {num(p.discount) > 0 && <SumRow label={t('trading.discount')} value={`- ${money(p.discount)}`} />}
-          {!p.costs_account_id && extras > 0 && <SumRow label={t('trading.transportLabour')} value={money(extras)} />}
-          <SumRow label={t('trading.supplierBill')} value={money(p.supplier_total)} strong />
-          <SumRow label={t('common.paid')} value={money(dues?.total_paid)} />
-          <SumRow label={t('common.due')} value={money(dues?.due_amount)} />
-          <div className="no-print pt-2 text-xs text-slate-500">
-            {t('trading.landedCost')}: {money(p.total_cost)}
+              )}
+            </>
+          }
+          footer={<SignatureFooter createdBy={createdBy} createdAt={p.created_at} signers={[t('print.supplierSignature')]} />}
+        >
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="rounded border border-slate-200 p-3">
+              <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.supplier')}</div>
+              <Link to={`/parties/${p.supplier.id}`} className="font-semibold">
+                {nameOf(p.supplier)}
+              </Link>
+              <div className="text-xs text-slate-600">{p.supplier.address}</div>
+              <div className="text-xs text-slate-600">{p.supplier.phone}</div>
+            </div>
+            <div className="rounded border border-slate-200 p-3 text-xs">
+              <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase">{t('trading.delivery')}</div>
+              <div>
+                {t('trading.receiveInto')}: {nameOf(p.warehouse)}
+              </div>
+              <div>
+                {t('trading.vehicleNo')}: {p.vehicle_no || '—'}
+              </div>
+              {p.broker && (
+                <div>
+                  {t('trading.broker')}: {p.broker.name}
+                </div>
+              )}
+            </div>
+          </div>
+          <table className="w-full border-collapse text-[12px]">
+            <thead>
+              <tr>
+                <th className={th}>#</th>
+                <th className={th}>{t('common.item')}</th>
+                <th className={`${th} text-right`}>{t('unit.bags')}</th>
+                <th className={`${th} text-right`}>{t('trading.grossKg')}</th>
+                <th className={`${th} text-right`}>{t('trading.deductionKg')}</th>
+                <th className={`${th} text-right`}>{t('trading.netKg')}</th>
+                <th className={`${th} text-right`}>{t('trading.rate')}</th>
+                <th className={`${th} text-right`}>{t('common.amount')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, i) => (
+                <tr key={l.id}>
+                  <td className={td}>{i + 1}</td>
+                  <td className={`${td} font-medium`}>{nameOf(l.item)}</td>
+                  <td className={`${td} text-right`}>{num(l.bags) ? `${qty(l.bags)} × ${qty(l.bag_size_kg)}` : ''}</td>
+                  <td className={`${td} text-right`}>{qty(l.gross_kg)}</td>
+                  <td className={`${td} text-right`}>{num(l.deduction_kg) ? qty(l.deduction_kg) : ''}</td>
+                  <td className={`${td} text-right`}>{qty(l.net_kg)}</td>
+                  <td className={`${td} text-right`}>
+                    {money(l.rate)}/{l.rate_unit === 'BAG' ? t('unit.bag') : t('unit.kg')}
+                  </td>
+                  <td className={`${td} text-right`}>{money(l.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-3 ml-auto w-72 space-y-1 text-[12px]">
+            <DocRow label={t('trading.goodsValue')} value={money(p.goods_amount)} />
+            {num(p.discount) > 0 && <DocRow label={t('trading.discount')} value={`- ${money(p.discount)}`} />}
+            {!p.costs_account_id && extras > 0 && <DocRow label={t('trading.transportLabour')} value={money(extras)} />}
+            <DocRow label={t('trading.supplierBill')} value={money(p.supplier_total)} strong />
+            <DocRow label={t('common.paid')} value={money(dues?.total_paid)} />
+            <DocRow label={t('common.due')} value={money(dues?.due_amount)} strong />
+          </div>
+          {p.notes && <p className="mt-4 text-xs text-slate-600">{p.notes}</p>}
+        </DocPage>
+      </div>
+      {can('books') && (
+        <Card className="no-print mx-auto mt-4 max-w-[794px]">
+          <div className="text-sm text-slate-600">
+            {t('trading.landedCost')}: <b>{money(p.total_cost)}</b>
             {(p.costs_account_id && extras > 0) || num(p.commission_amount) > 0
               ? ` (${[p.costs_account_id && extras > 0 ? `${t('trading.transportLabour')} ${money(extras)}` : '', num(p.commission_amount) > 0 ? `${t('trading.commission')} ${money(p.commission_amount)}` : ''].filter(Boolean).join(', ')})`
               : ''}
+            <div className="mt-1 text-xs">
+              {lines.map((l) => `${nameOf(l.item)}${l.lot ? ` (${l.lot.lot_no})` : ''}: ${money(l.unit_cost)}/${t('unit.kg')}`).join(' · ')}
+            </div>
           </div>
-        </div>
-        {p.notes && <p className="mt-4 text-sm text-slate-600">{p.notes}</p>}
-      </Card>
+        </Card>
+      )}
       <ConfirmModal
         open={deleting}
         onClose={() => setDeleting(false)}

@@ -10,6 +10,7 @@ import { Badge, Card, Loading, PageHeader, Stat } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { MoneyForm } from '@/features/money/MoneyForm'
 import { LedgerView } from '@/features/reports/Ledger'
+import { StatementPdfButton } from '@/features/reports/StatementPdf'
 import { useData } from '@/lib/data'
 import { ageDays, date, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -113,6 +114,15 @@ export function PartyLedgerPage() {
               <Button variant="secondary" onClick={() => setEditing(true)}>
                 {t('common.edit')}
               </Button>
+            )}
+            {can('books') && (
+              <StatementPdfButton
+                subject={{ title: t('statement.partyTitle'), name: nameOf(party), lines: [party.address, party.phone] }}
+                party={party.id}
+                debitLabel={t('ledger.partyDebit')}
+                creditLabel={t('ledger.partyCredit')}
+                filename={`statement_${party.name.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`}
+              />
             )}
             <PrintButton />
           </>

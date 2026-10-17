@@ -1,12 +1,29 @@
-// Renders an element to a single-page-wide PDF, as tall as the content needs.
+// Turns document pages into a PDF: one PDF page per `.doc-page` element (or the element itself).
 // html2canvas-pro is used because the styles use oklch() colours, which plain html2canvas cannot read.
-export async function downloadPdf(el: HTMLElement, filename: string) {
+async function build(root: HTMLElement) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas-pro'), import('jspdf')])
-  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', width: el.scrollWidth, windowWidth: el.scrollWidth })
+  const pages = root.classList.contains('doc-page') ? [root] : [...root.querySelectorAll<HTMLElement>('.doc-page')]
+  if (!pages.length) pages.push(root)
   const widthMm = 210
-  const heightMm = Math.max(297, (canvas.height * widthMm) / canvas.width)
-  const pdf = new jsPDF({ unit: 'mm', format: [widthMm, heightMm] })
-  // JPEG keeps the file small enough to send on WhatsApp or email (PNG made a 5 MB invoice)
-  pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, widthMm, (canvas.height * widthMm) / canvas.width)
-  pdf.save(filename)
+  let pdf: InstanceType<typeof jsPDF> | null = null
+  for (const page of pages) {
+    const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', width: page.scrollWidth, windowWidth: page.scrollWidth })
+    const heightMm = (canvas.height * widthMm) / canvas.width
+    const format: [number, number] = [widthMm, Math.max(297, heightMm)]
+    if (!pdf) pdf = new jsPDF({ unit: 'mm', format })
+    else pdf.addPage(format)
+    // JPEG keeps the file small enough to send on WhatsApp or email (PNG made a 5 MB invoice)
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, widthMm, heightMm)
+  }
+  return pdf!
+}
+
+export async function downloadPdf(root: HTMLElement, filename: string) {
+  ;(await build(root)).save(filename)
+}
+
+// Opens the PDF in a new tab, where it can be printed or shared
+export async function openPdf(root: HTMLElement) {
+  const url = (await build(root)).output('bloburl')
+  window.open(url, '_blank')
 }

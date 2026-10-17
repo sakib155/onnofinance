@@ -49,6 +49,8 @@ export type MoneyTxn = {
   linked_purchase_id: string | null
   linked_sale_no?: string | null
   linked_purchase_no?: string | null
+  created_by?: string | null
+  created_at?: string
   money_account_name?: string
   counter_account_name?: string | null
   party_name?: string | null
