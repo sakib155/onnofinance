@@ -1,8 +1,17 @@
-import type { Item, ProductionStatus, Stage } from '@/lib/types'
+import type { Item, ProductionStatus } from '@/lib/types'
+
+export type BatchKind = 'DRYER' | 'SORTER'
+
+// What each section takes in as material and gives out as its main product
+export const SECTION = {
+  DRYER: { material: 'PADDY', main: 'UNSORTED' },
+  SORTER: { material: 'UNSORTED', main: 'RICE' },
+} as const
 
 export type Batch = {
   id: string
   batch_no: string
+  kind: BatchKind
   start_date: string
   status: ProductionStatus
   input_warehouse_id: string
@@ -12,33 +21,36 @@ export type Batch = {
   notes: string | null
   input_kg: number
   input_cost: number
+  material_cost: number
+  consumable_cost: number
   processing_cost: number
   total_cost: number
   output_kg: number
-  rice_kg: number
+  main_kg: number
+  main_cost: number
   byproduct_kg: number
-  rice_yield_pct: number | null
+  byproduct_value: number
+  main_yield_pct: number | null
   total_yield_pct: number | null
-  rice_cost_per_kg: number | null
+  main_cost_per_kg: number | null
   completed_date: string | null
 }
 
-export type BatchInput = { id: string; item_id: string; lot_id: string | null; bags: number; qty_kg: number; cost: number; item: Item; lot: { lot_no: string } | null }
-
-export type BatchStage = {
+export type BatchInput = {
   id: string
-  stage: Stage
-  start_date: string | null
-  end_date: string | null
-  input_kg: number | null
-  output_kg: number | null
-  moisture_pct: number | null
-  notes: string | null
+  item_id: string
+  lot_id: string | null
+  bags: number
+  qty_kg: number
+  cost: number
+  purpose: 'MATERIAL' | 'CONSUMABLE'
+  item: Item
+  lot: { lot_no: string; source_type: string } | null
 }
 
 export type BatchCost = {
   id: string
-  stage: Stage | 'GENERAL'
+  stage: string
   cost_date: string
   cost_head_id: string
   amount: number
@@ -62,5 +74,5 @@ export type BatchOutput = {
   lot: { lot_no: string } | null
 }
 
-export const statusTone = (s: ProductionStatus) =>
-  (({ SOAKING: 'blue', DRYING: 'amber', MILLING: 'violet', COMPLETED: 'green', CANCELLED: 'red' }) as const)[s]
+export const statusTone = (s: ProductionStatus) => (({ RUNNING: 'blue', COMPLETED: 'green', CANCELLED: 'red' }) as const)[s]
+export const kindTone = (k: BatchKind) => (k === 'DRYER' ? 'amber' : 'violet')

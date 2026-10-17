@@ -66,8 +66,9 @@ export function StockPage() {
     <>
       <PrintHeader title={t('nav.stockSummary')} />
       <PageHeader title={t('nav.stockSummary')} subtitle={t('stock.subtitle')} actions={<PrintButton />} />
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label={t('category.PADDY')} value={kg(byCat('PADDY'))} />
+        <Stat label={t('category.UNSORTED')} value={kg(byCat('UNSORTED'))} />
         <Stat label={t('category.RICE')} value={kg(byCat('RICE'))} />
         <Stat label={t('category.BYPRODUCT')} value={kg(byCat('BYPRODUCT'))} />
         {showValue && <Stat label={t('stock.totalValue')} value={money(totalValue)} />}

@@ -1,4 +1,4 @@
-import { UserPlus } from 'lucide-react'
+import { Layers, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,6 +12,7 @@ import { PartyForm } from '@/features/parties/PartyForm'
 import { rpc, useData, useMethodFor, useParties, useSave, useWarehouses } from '@/lib/data'
 import { kg, money, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
+import { useStockSummary } from '@/features/stock/StockPage'
 import { lineAmount, LinesEditor, newLine, SumRow, type Line } from './LinesEditor'
 
 export type Sale = {
@@ -113,6 +114,20 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
   )
   const [addingParty, setAddingParty] = useState(false)
   const [overLimit, setOverLimit] = useState(false)
+  const { data: stock } = useStockSummary()
+  // by-products in this godown, for selling them all (or half) in one go
+  const byproductStock = (stock ?? []).filter((r) => r.category === 'BYPRODUCT' && r.warehouse_id === h.warehouse_id && num(r.qty_kg) > 0)
+  const addByproducts = (share: number) =>
+    setLines((ls) => {
+      const kept = ls.filter((l) => l.item_id && !byproductStock.some((r) => r.item_id === l.item_id))
+      const added = byproductStock.map((r) => ({
+        ...newLine(),
+        item_id: r.item_id,
+        gross_kg: String(Math.round(num(r.qty_kg) * share * 1000) / 1000),
+        bags: num(r.bags) ? String(Math.floor(num(r.bags) * share)) : '',
+      }))
+      return [...kept, ...added]
+    })
   const methodFor = useMethodFor()
   const set = (k: keyof typeof h) => (v: string) => setH((x) => ({ ...x, [k]: v }))
 
@@ -198,7 +213,22 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
           </div>
         </Card>
 
-        <Card title={t('trading.items')}>
+        <Card
+          title={t('trading.items')}
+          actions={
+            byproductStock.length > 0 && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => addByproducts(1)}>
+                  <Layers className="size-4" />
+                  {t('trading.sellAllByproducts')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => addByproducts(0.5)}>
+                  {t('trading.sellHalfByproducts')}
+                </Button>
+              </>
+            )
+          }
+        >
           <LinesEditor lines={lines} onChange={setLines} mode="sale" warehouseId={h.warehouse_id} />
           <p className="mt-2 text-xs text-slate-500">{t('trading.lotHelp')}</p>
         </Card>

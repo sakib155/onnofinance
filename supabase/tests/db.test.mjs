@@ -85,29 +85,64 @@ await rpc('save_purchase', { id: pur2, purchase_date: '2026-02-05', supplier_id:
 check('edit purchase reposts', +(await one(`select goods_amount from purchases where id=$1`, [pur2])).goods_amount === 50000
   && +(await one(`select count(*) c from lots where source_id=$1`, [pur2])).c === 1)
 
-// Production
+// Production: dryer (paddy → unsorted + husk + bran), then sorter (unsorted → sorted rice + broken + polish)
+const unsorted = await item('U-01'), polish = await item('B-04')
+const price = async (id) => +(await one(`select standard_price from items where id = $1`, [id])).standard_price
+await rpc('save_stock_adjustment', { adjustment_date: '2026-01-01', kind: 'OPENING', item_id: husk, warehouse_id: wh, qty_kg: 1000, unit_cost: 4 })
+await expectError('dryer material must be paddy', () => rpc('save_production_batch', { kind: 'DRYER', start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,
+  inputs: [{ item_id: husk, qty_kg: 10 }] }), 'is not paddy')
 const bat = await rpc('save_production_batch', {
-  start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,
-  inputs: [{ item_id: paddy, bags: 93, qty_kg: 7000 }],
+  kind: 'DRYER', start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,
+  inputs: [{ item_id: paddy, bags: 93, qty_kg: 7000 }, { item_id: husk, qty_kg: 300, purpose: 'CONSUMABLE' }],
 })
 const b0 = await one(`select * from production_batches where id = $1`, [bat])
-check('batch consumes paddy FIFO from first lot', Math.abs(b0.input_cost - 7000 * lot.unit_cost) < 1, b0.input_cost)
-await db.query(`select public.save_production_stage($1::jsonb)`, [JSON.stringify({ batch_id: bat, stage: 'SOAKING', start_date: '2026-02-10', end_date: '2026-02-11', input_kg: 7000, output_kg: 7600, set_status: 'DRYING' })])
-await db.query(`select public.save_production_stage($1::jsonb)`, [JSON.stringify({ batch_id: bat, stage: 'DRYING', start_date: '2026-02-11', end_date: '2026-02-13', input_kg: 7600, output_kg: 6900, moisture_pct: 14, set_status: 'MILLING' })])
+check('dryer batch numbered DRY and counts only paddy as material', b0.batch_no.startsWith('DRY-') && +b0.input_kg === 7000, `${b0.batch_no} ${b0.input_kg}`)
+check('own husk burned as fuel is part of the batch cost', Math.abs(b0.input_cost - (7000 * lot.unit_cost + 300 * 4)) < 1, b0.input_cost)
 const fuel = (await one(`select id from accounts where code='6010'`)).id
 const labour = (await one(`select id from accounts where code='6000'`)).id
-await rpc('save_production_cost', { batch_id: bat, stage: 'SOAKING', cost_date: '2026-02-10', cost_head_id: fuel, amount: 5000, paid_account_id: cash })
-const c2 = await rpc('save_production_cost', { batch_id: bat, stage: 'MILLING', cost_date: '2026-02-13', cost_head_id: labour, amount: 3000, party_id: brk })
+const elec = (await one(`select id from accounts where code='6020'`)).id
+await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: '2026-02-10', cost_head_id: fuel, amount: 5000, paid_account_id: cash })
+const c2 = await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: '2026-02-13', cost_head_id: labour, amount: 3000, party_id: brk })
 await db.query(`select public.delete_production_cost($1)`, [c2])
-await rpc('save_production_cost', { batch_id: bat, stage: 'MILLING', cost_date: '2026-02-13', cost_head_id: labour, amount: 2000, paid_account_id: cash })
-await db.query(`select public.complete_production_batch($1::jsonb)`, [JSON.stringify({ batch_id: bat, completed_date: '2026-02-14', outputs: [
-  { item_id: rice, bags: 90, bag_size_kg: 50, qty_kg: 4500 }, { item_id: broken, qty_kg: 300 },
-  { item_id: bran, qty_kg: 600 }, { item_id: husk, qty_kg: 1400 }] })])
-const bv = await one(`select * from v_production_batches where id = $1`, [bat])
-const outSum = +(await one(`select sum(cost_share) s from production_outputs where batch_id=$1`, [bat])).s
-check('batch completed, outputs carry full cost', bv.status === 'COMPLETED' && Math.abs(outSum - (+b0.input_cost + 7000)) < 0.01, `${outSum} yield ${bv.rice_yield_pct}% ricecost ${bv.rice_cost_per_kg}`)
+await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: '2026-02-13', cost_head_id: labour, amount: 2000, paid_account_id: cash })
+const complete = (id, date, outputs) => db.query(`select public.complete_production_batch($1::jsonb)`, [JSON.stringify({ batch_id: id, completed_date: date, outputs })])
+await expectError('dryer cannot output sorted rice', () => complete(bat, '2026-02-14', [{ item_id: rice, qty_kg: 4900 }]), 'unsorted rice and by-products only')
+await expectError('dryer needs an unsorted rice output', () => complete(bat, '2026-02-14', [{ item_id: husk, qty_kg: 1400 }]), 'Add the unsorted rice')
+await complete(bat, '2026-02-14', [{ item_id: unsorted, bags: 98, bag_size_kg: 50, qty_kg: 4900 }, { item_id: husk, qty_kg: 1400 }, { item_id: bran, qty_kg: 500 }])
+const dryTotal = +b0.input_cost + 7000
+const byVal = 1400 * (await price(husk)) + 500 * (await price(bran))
+const dv = await one(`select * from v_production_batches where id = $1`, [bat])
+const huskOut = await one(`select cost_share, unit_cost from production_outputs where batch_id = $1 and item_id = $2`, [bat, husk])
+check('by-products are valued at their current price', Math.abs(+huskOut.unit_cost - (await price(husk))) < 0.0001 && Math.abs(+dv.byproduct_value - byVal) < 0.01, `${huskOut.unit_cost} ${dv.byproduct_value}`)
+check('unsorted rice carries the rest of the dryer cost', Math.abs(+dv.main_cost - (dryTotal - byVal)) < 0.01 && Math.abs(+dv.main_cost_per_kg - (dryTotal - byVal) / 4900) < 0.001,
+  `${dv.main_cost} ${dv.main_cost_per_kg} yield ${dv.main_yield_pct}%`)
+check('dryer yield = unsorted kg / paddy kg', +dv.main_yield_pct === 70, dv.main_yield_pct)
 check('WIP is zero after completion', +(await one(`select balance from v_account_balances where subtype='WIP'`)).balance === 0)
 await expectError('cannot add cost to completed batch', () => rpc('save_production_cost', { batch_id: bat, cost_date: '2026-02-15', cost_head_id: fuel, amount: 1, paid_account_id: cash }), 'completed')
+
+// unsorted rice bought from another mill, then sorted together with our own
+const otherMill = (await one(`insert into parties (name, types) values ('Other Mill', '{SUPPLIER}') returning id`)).id
+await rpc('save_purchase', { purchase_date: '2026-02-15', supplier_id: otherMill, warehouse_id: wh, lines: [{ item_id: unsorted, bags: 10, bag_size_kg: 50, gross_kg: 500, rate: 44 }] })
+await expectError('sorter material must be unsorted rice', () => rpc('save_production_batch', { kind: 'SORTER', start_date: '2026-02-16', input_warehouse_id: wh, output_warehouse_id: wh,
+  inputs: [{ item_id: paddy, qty_kg: 10 }] }), 'is not unsorted rice')
+const sbat = await rpc('save_production_batch', { kind: 'SORTER', start_date: '2026-02-16', input_warehouse_id: wh, output_warehouse_id: wh,
+  inputs: [{ item_id: unsorted, qty_kg: 5400 }] })
+await rpc('save_production_cost', { batch_id: sbat, stage: 'GENERAL', cost_date: '2026-02-16', cost_head_id: elec, amount: 1500, paid_account_id: cash })
+await expectError('sorter needs a sorted rice output', () => complete(sbat, '2026-02-17', [{ item_id: broken, qty_kg: 300 }]), 'Add the sorted rice')
+await complete(sbat, '2026-02-17', [{ item_id: rice, bags: 90, bag_size_kg: 50, qty_kg: 4500 }, { item_id: broken, qty_kg: 300 }, { item_id: polish, qty_kg: 400 }])
+const sv = await one(`select * from v_production_batches where id = $1`, [sbat])
+const sortTotal = (dryTotal - byVal) + 500 * 44 + 1500
+const sortBy = 300 * (await price(broken)) + 400 * (await price(polish))
+check('sorter batch numbered SOR, mixes own and bought unsorted rice', sv.batch_no.startsWith('SOR-') && Math.abs(+sv.input_cost - ((dryTotal - byVal) + 22000)) < 0.05, `${sv.batch_no} ${sv.input_cost}`)
+check('sorted rice cost chains paddy + dryer + bought unsorted + sorter costs', Math.abs(+sv.main_cost - (sortTotal - sortBy)) < 0.05, `${sv.main_cost} vs ${sortTotal - sortBy}, ${sv.main_cost_per_kg}/kg`)
+await q(`update items set standard_price = 5 where id = $1`, [husk])
+const hist = await q(`select old_price, new_price from item_price_history where item_id = $1 order by id`, [husk])
+check('price changes are kept in the history', hist.length === 2 && +hist[1].old_price === 4 && +hist[1].new_price === 5, JSON.stringify(hist))
+await q(`update items set standard_price = 4 where id = $1`, [husk])
+// by-products worth more than the batch are refused
+const tiny = await rpc('save_production_batch', { kind: 'DRYER', start_date: '2026-02-18', input_warehouse_id: wh, output_warehouse_id: wh, inputs: [{ item_id: paddy, qty_kg: 10 }] })
+await expectError('by-products cannot be worth more than the batch', () => complete(tiny, '2026-02-18', [{ item_id: unsorted, qty_kg: 5 }, { item_id: bran, qty_kg: 1000 }]), 'worth more than the whole batch')
+await db.query(`select public.delete_production_batch($1)`, [tiny])
 
 // Sales
 const sale = await rpc('save_sale', {

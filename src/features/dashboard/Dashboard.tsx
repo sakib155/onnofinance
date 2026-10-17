@@ -8,7 +8,7 @@ import { ButtonLink } from '@/components/ui/button'
 import { Badge, Card, Loading, PageHeader, Stat } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useBatches } from '@/features/production/ProductionPage'
-import { statusTone } from '@/features/production/types'
+import { kindTone } from '@/features/production/types'
 import { useStockSummary } from '@/features/stock/StockPage'
 import { useData, useParties } from '@/lib/data'
 import { date, kg, money, monthStart, num, qty, today } from '@/lib/format'
@@ -21,7 +21,9 @@ type Stats = {
   payable: number
   stock_value: number
   paddy_kg: number
+  unsorted_kg: number
   rice_kg: number
+  byproduct_kg: number
   open_batches: number
   sales: number
   purchases: number
@@ -70,10 +72,16 @@ export function Dashboard() {
               </ButtonLink>
             )}
             {can('production') && (
-              <ButtonLink to="/production/new" variant="secondary">
-                <Factory className="size-4" />
-                {t('production.newBatch')}
-              </ButtonLink>
+              <>
+                <ButtonLink to="/production/new?section=DRYER" variant="secondary">
+                  <Factory className="size-4" />
+                  {t('production.newBatchOf.DRYER')}
+                </ButtonLink>
+                <ButtonLink to="/production/new?section=SORTER" variant="secondary">
+                  <Factory className="size-4" />
+                  {t('production.newBatchOf.SORTER')}
+                </ButtonLink>
+              </>
             )}
             {can('money') && (
               <ButtonLink to="/money" variant="secondary">
@@ -89,12 +97,13 @@ export function Dashboard() {
           <Stat label={t('dashboard.cash')} value={money(s.cash)} hint={`${t('dashboard.bank')}: ${money(s.bank)}`} />
           <Stat label={t('dashboard.receivable')} value={money(s.receivable)} hint={t('dashboard.receivableHint')} />
           <Stat label={t('dashboard.payable')} value={money(s.payable)} hint={t('dashboard.payableHint')} />
-          <Stat label={t('dashboard.stockValue')} value={money(s.stock_value)} hint={`${t('category.PADDY')} ${kg(s.paddy_kg)} · ${t('category.RICE')} ${kg(s.rice_kg)}`} />
+          <Stat label={t('dashboard.stockValue')} value={money(s.stock_value)} hint={`${t('category.PADDY')} ${kg(s.paddy_kg)} · ${t('category.UNSORTED')} ${kg(s.unsorted_kg)} · ${t('category.RICE')} ${kg(s.rice_kg)}`} />
         </div>
       )}
       {!books && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label={t('category.PADDY')} value={kg((stock ?? []).filter((r) => r.category === 'PADDY').reduce((a, r) => a + num(r.qty_kg), 0))} />
+          <Stat label={t('category.UNSORTED')} value={kg((stock ?? []).filter((r) => r.category === 'UNSORTED').reduce((a, r) => a + num(r.qty_kg), 0))} />
           <Stat label={t('category.RICE')} value={kg((stock ?? []).filter((r) => r.category === 'RICE').reduce((a, r) => a + num(r.qty_kg), 0))} />
           <Stat label={t('production.running')} value={batches?.length ?? 0} />
         </div>
@@ -151,8 +160,8 @@ export function Dashboard() {
                 ),
               },
               { key: 'start', header: t('production.started'), cell: (b) => date(b.start_date) },
-              { key: 'status', header: t('common.status'), cell: (b) => <Badge tone={statusTone(b.status)}>{t(`production.status.${b.status}`)}</Badge> },
-              { key: 'kg', header: t('production.paddyIn'), align: 'right', cell: (b) => qty(b.input_kg) },
+              { key: 'section', header: t('production.sectionLabel'), cell: (b) => <Badge tone={kindTone(b.kind)}>{t(`production.section.${b.kind}`)}</Badge> },
+              { key: 'kg', header: t('production.kgIn'), align: 'right', cell: (b) => qty(b.input_kg) },
             ]}
           />
         </Card>

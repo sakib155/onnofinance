@@ -51,7 +51,7 @@ export type Party = {
   balance?: number
 }
 
-export const ITEM_CATEGORIES = ['PADDY', 'RICE', 'BYPRODUCT', 'PACKAGING', 'OTHER'] as const
+export const ITEM_CATEGORIES = ['PADDY', 'UNSORTED', 'RICE', 'BYPRODUCT', 'PACKAGING', 'OTHER'] as const
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number]
 
 export type Item = {
@@ -109,6 +109,4 @@ export type MoneyTxnType =
   | 'LOAN_GIVEN'
   | 'LOAN_RECOVER'
 
-export type ProductionStatus = 'SOAKING' | 'DRYING' | 'MILLING' | 'COMPLETED' | 'CANCELLED'
-export const STAGES = ['SOAKING', 'DRYING', 'MILLING'] as const
-export type Stage = (typeof STAGES)[number]
+export type ProductionStatus = 'RUNNING' | 'COMPLETED' | 'CANCELLED'

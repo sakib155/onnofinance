@@ -9,12 +9,12 @@ import { Badge, Card, ErrorBox, PageHeader } from '@/components/ui/layout'
 import { Modal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { unwrap, useItems, useSave } from '@/lib/data'
-import { money, num, qty } from '@/lib/format'
+import { unwrap, useData, useItems, useSave } from '@/lib/data'
+import { date, money, num, qty } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { ITEM_CATEGORIES, type Item } from '@/lib/types'
 
-const categoryTone = { PADDY: 'amber', RICE: 'green', BYPRODUCT: 'violet', PACKAGING: 'blue', OTHER: 'slate' } as const
+export const categoryTone = { PADDY: 'amber', UNSORTED: 'red', RICE: 'green', BYPRODUCT: 'violet', PACKAGING: 'blue', OTHER: 'slate' } as const
 
 function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void }) {
   const { t } = useTranslation()
@@ -102,6 +102,11 @@ export function ItemsPage() {
   const { t } = useTranslation()
   const can = useCan()
   const { data, isLoading } = useItems()
+  // when each item's current price was last changed
+  const { data: history } = useData<{ item_id: string; changed_at: string }[]>(['price-history'], () =>
+    supabase.from('item_price_history').select('item_id, changed_at').order('changed_at', { ascending: false }),
+  )
+  const lastChanged = (id: string) => history?.find((h) => h.item_id === id)?.changed_at
   const [editing, setEditing] = useState<Item | null | undefined>(undefined)
   return (
     <>
@@ -129,7 +134,17 @@ export function ItemsPage() {
             { key: 'name', header: t('common.name'), cell: (i) => <span className="font-medium">{nameOf(i)}</span> },
             { key: 'cat', header: t('items.category'), cell: (i) => <Badge tone={categoryTone[i.category]}>{t(`category.${i.category}`)}</Badge> },
             { key: 'bag', header: t('items.bagSize'), align: 'right', cell: (i) => (num(i.default_bag_kg) ? `${qty(i.default_bag_kg)} ${t('unit.kg')}` : '—') },
-            { key: 'price', header: t('items.standardPrice'), align: 'right', cell: (i) => money(i.standard_price) },
+            {
+              key: 'price',
+              header: t('items.standardPrice'),
+              align: 'right',
+              cell: (i) => (
+                <div>
+                  {money(i.standard_price)}
+                  {lastChanged(i.id) && <div className="text-xs text-slate-500">{t('items.since', { date: date(lastChanged(i.id)) })}</div>}
+                </div>
+              ),
+            },
           ]}
         />
       </Card>
