@@ -289,6 +289,13 @@ const lp = await q(`select lot_no, item_name, sold_kg, revenue, cost_of_sold, pr
 console.log('     lots', JSON.stringify(lp))
 const dash = await one(`select dashboard_stats('2026-02-01', '2026-03-31') d`)
 console.log('     dashboard', JSON.stringify(dash.d))
+const dd = dash.d
+const stockSum = dd.stock.reduce((a, r) => a + +r.value, 0)
+check('dashboard stock by category adds up to stock value (other categories aside)', dd.stock.length === 4 && stockSum <= dd.stock_value + 0.01 && stockSum > 0, `${stockSum} / ${dd.stock_value}`)
+check('dashboard sections: dryer and sorter yield', dd.sections.DRYER.completed === 1 && +dd.sections.DRYER.yield_pct === 70 && dd.sections.SORTER.completed === 1 && dd.sections.SORTER.cost_per_kg > 0, JSON.stringify(dd.sections))
+const gp = +(await one(`select sum(goods_amount - discount - cost_amount) g from sales where sale_date between '2026-02-01' and '2026-03-31'`)).g
+check('dashboard gross profit and trend', Math.abs(dd.gross_profit - gp) < 0.01 && dd.trend.length === 6 && 'gross_profit' in dd.trend[0], dd.gross_profit)
+check('dashboard recent activity, cheques', dd.recent.length === 10 && dd.recent.every((r, i) => i === 0 || r.created_at <= dd.recent[i - 1].created_at) && dd.recent.some((r) => r.kind.startsWith('MONEY:')) && 'due_week' in dd.cheques, dd.recent.map((r) => r.kind).join(','))
 const cs = await q(`select * from report_cash_summary('2026-02-01', '2026-02-28')`)
 check('cash summary closing = opening + in - out', cs.every((r) => Math.abs(+r.opening + +r.money_in - +r.money_out - +r.closing) < 0.01))
 
