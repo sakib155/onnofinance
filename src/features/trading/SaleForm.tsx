@@ -1,7 +1,7 @@
-import { Layers, UserPlus } from 'lucide-react'
+import { ClipboardList, Layers, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AccountSelect, isMoneyAccount, PartyPicker, WarehouseSelect } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/form'
@@ -14,6 +14,7 @@ import { kg, money, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { useStockSummary } from '@/features/stock/StockPage'
 import { lineAmount, LinesEditor, newLine, SumRow, type Line } from './LinesEditor'
+import { useOpenOrders, type OrderLine, type OrderRow } from './OrdersPage'
 
 export type Sale = {
   id: string
@@ -38,6 +39,9 @@ export type Sale = {
   received_method: 'CASH' | 'BANK' | 'CHEQUE'
   received_cheque_no: string | null
   received_cheque_date: string | null
+  order_id: string | null
+  po_number: string | null
+  po_date: string | null
   cost_amount: number
   created_by: string | null
   created_at: string
@@ -61,25 +65,65 @@ export type SaleLine = {
 
 export function SaleForm() {
   const { id } = useParams()
+  const [params] = useSearchParams()
+  const orderId = id ? null : params.get('order')
   const { data: warehouses } = useWarehouses()
   const existing = useData<Sale>(['sale', id], () => supabase.from('sales').select('*, lines:sale_lines(*)').eq('id', id!).single(), { enabled: Boolean(id) })
-  if (existing.error) return <ErrorBox error={existing.error} />
-  if ((id && !existing.data) || !warehouses) return <Loading />
-  return <SaleEditor key={id ?? 'new'} id={id} existing={id ? existing.data : undefined} defaultWarehouse={warehouses[0]?.id ?? ''} />
+  // new sale delivering an order: start from the order's customer, PO number and what is still to deliver
+  const order = useData<OrderRow>(['order-row', orderId], () => supabase.from('v_sales_orders').select('*').eq('id', orderId!).single(), { enabled: Boolean(orderId) })
+  const orderLines = useOrderLines(orderId ?? undefined)
+  if (existing.error || order.error) return <ErrorBox error={existing.error ?? order.error} />
+  if ((id && !existing.data) || !warehouses || (orderId && (!order.data || !orderLines.data))) return <Loading />
+  return (
+    <SaleEditor
+      key={id ?? orderId ?? 'new'}
+      id={id}
+      existing={id ? existing.data : undefined}
+      fromOrder={orderId && order.data ? { order: order.data, lines: orderLines.data ?? [] } : undefined}
+      defaultWarehouse={warehouses[0]?.id ?? ''}
+    />
+  )
 }
+
+const useOrderLines = (orderId?: string) =>
+  useData<OrderLine[]>(['order-remaining', orderId], () => supabase.from('v_sales_order_lines').select('*').eq('order_id', orderId!).order('line_no'), {
+    enabled: Boolean(orderId),
+  })
+
+// What is still to deliver on an order, as sale lines at the agreed rate
+const remainingLines = (lines: OrderLine[]): Line[] =>
+  lines
+    .filter((l) => num(l.remaining_kg) > 0.0005)
+    .map((l) => ({
+      ...newLine(),
+      item_id: l.item_id,
+      bags: num(l.remaining_bags) ? String(l.remaining_bags) : '',
+      bag_size_kg: num(l.bag_size_kg) ? String(l.bag_size_kg) : '',
+      gross_kg: String(l.remaining_kg),
+      rate: num(l.rate) ? String(l.rate) : '',
+      rate_unit: l.rate_unit,
+    }))
 
 const blank = (v: unknown) => (v == null || num(v) === 0 ? '' : String(v))
 
-function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existing?: Sale; defaultWarehouse: string }) {
+function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
+  id?: string
+  existing?: Sale
+  fromOrder?: { order: OrderRow; lines: OrderLine[] }
+  defaultWarehouse: string
+}) {
   const { t } = useTranslation()
   const toast = useToast()
   const navigate = useNavigate()
   const { data: customers } = useParties()
   const [h, setH] = useState(() => ({
     sale_date: s?.sale_date ?? today(),
-    customer_id: s?.customer_id ?? '',
+    customer_id: s?.customer_id ?? fromOrder?.order.customer_id ?? '',
+    order_id: s?.order_id ?? fromOrder?.order.id ?? '',
+    po_number: s?.po_number ?? fromOrder?.order.po_number ?? '',
+    po_date: s?.po_date ?? fromOrder?.order.po_date ?? '',
     broker_id: s?.broker_id ?? '',
-    warehouse_id: s?.warehouse_id ?? defaultWarehouse,
+    warehouse_id: s?.warehouse_id ?? fromOrder?.order.warehouse_id ?? defaultWarehouse,
     vehicle_no: s?.vehicle_no ?? '',
     driver_name: s?.driver_name ?? '',
     driver_phone: s?.driver_phone ?? '',
@@ -111,7 +155,9 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
             rate: String(l.rate),
             rate_unit: l.rate_unit,
           }))
-      : [newLine()],
+      : fromOrder
+        ? remainingLines(fromOrder.lines)
+        : [newLine()],
   )
   const [addingParty, setAddingParty] = useState(false)
   const [overLimit, setOverLimit] = useState(false)
@@ -130,6 +176,21 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
       return [...kept, ...added]
     })
   const methodFor = useMethodFor()
+  const { data: openOrders } = useOpenOrders(h.customer_id || undefined)
+  // the order this invoice delivers: open ones of the customer, plus the one already linked when editing
+  const orderOptions = (openOrders ?? []).filter((o) => o.progress !== 'DELIVERED' || o.id === h.order_id)
+  const linkedMissing = h.order_id && !orderOptions.some((o) => o.id === h.order_id)
+  const { data: selectedOrderLines } = useOrderLines(h.order_id || undefined)
+  const pickOrder = (orderId: string) => {
+    const o = openOrders?.find((x) => x.id === orderId)
+    setH((x) => ({
+      ...x,
+      order_id: orderId,
+      po_number: o ? (o.po_number ?? '') : x.po_number,
+      po_date: o ? (o.po_date ?? '') : x.po_date,
+      warehouse_id: o?.warehouse_id ?? x.warehouse_id,
+    }))
+  }
   const set = (k: keyof typeof h) => (v: string) => setH((x) => ({ ...x, [k]: v }))
 
   const goods = lines.reduce((s, l) => s + lineAmount(l), 0)
@@ -186,7 +247,7 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
             >
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <PartyPicker value={h.customer_id} onChange={set('customer_id')} type="CUSTOMER" />
+                  <PartyPicker value={h.customer_id} onChange={(v) => setH((x) => ({ ...x, customer_id: v, order_id: v === x.customer_id ? x.order_id : '' }))} type="CUSTOMER" />
                 </div>
                 <Button variant="secondary" onClick={() => setAddingParty(true)} title={t('parties.new')}>
                   <UserPlus className="size-4" />
@@ -210,6 +271,33 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
             </Field>
             <Field label={t('trading.broker')}>
               <PartyPicker value={h.broker_id} onChange={set('broker_id')} type="BROKER" clearable placeholder={t('common.none')} />
+            </Field>
+          </div>
+          <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label={t('orders.againstOrder')} className="lg:col-span-2" hint={h.customer_id && !orderOptions.length && !h.order_id ? t('orders.noOpenOrders') : undefined}>
+              <div className="flex gap-2">
+                <Select className="flex-1" value={h.order_id} onChange={(e) => pickOrder(e.target.value)} disabled={!h.customer_id}>
+                  <option value="">{t('orders.noOrder')}</option>
+                  {linkedMissing && <option value={h.order_id}>{t('orders.linkedOrder')}</option>}
+                  {orderOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {[o.order_no, o.po_number && `PO ${o.po_number}`, `${t('orders.remaining')} ${kg(o.remaining_kg)}`].filter(Boolean).join(' · ')}
+                    </option>
+                  ))}
+                </Select>
+                {h.order_id && selectedOrderLines && remainingLines(selectedOrderLines).length > 0 && (
+                  <Button variant="secondary" onClick={() => setLines(remainingLines(selectedOrderLines))} title={t('orders.fillRemainingHint')}>
+                    <ClipboardList className="size-4" />
+                    {t('orders.fillRemaining')}
+                  </Button>
+                )}
+              </div>
+            </Field>
+            <Field label={t('orders.poNumber')} hint={h.order_id ? t('orders.poFromOrder') : t('orders.poHint')}>
+              <Input value={h.po_number} onChange={(e) => set('po_number')(e.target.value)} disabled={Boolean(h.order_id)} />
+            </Field>
+            <Field label={t('orders.poDate')}>
+              <Input type="date" value={h.po_date} onChange={(e) => set('po_date')(e.target.value)} disabled={Boolean(h.order_id)} />
             </Field>
           </div>
         </Card>

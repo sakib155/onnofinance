@@ -28,6 +28,7 @@ import { WarehousesPage } from '@/features/setup/WarehousesPage'
 import { LotsPage } from '@/features/stock/LotsPage'
 import { StockMovesPage } from '@/features/stock/StockMovesPage'
 import { StockPage } from '@/features/stock/StockPage'
+import { OrderForm, OrdersPage, OrderView } from '@/features/trading/OrdersPage'
 import { PurchaseForm } from '@/features/trading/PurchaseForm'
 import { PurchasesPage, PurchaseView } from '@/features/trading/PurchasesPage'
 import { ReturnsPage } from '@/features/trading/ReturnsPage'
@@ -112,6 +113,10 @@ export function App() {
                 <Route path="purchases/new" element={<Guard perm="purchase"><PurchaseForm /></Guard>} />
                 <Route path="purchases/:id" element={<Guard perm={VIEW.purchases}><PurchaseView /></Guard>} />
                 <Route path="purchases/:id/edit" element={<Guard perm="purchase"><PurchaseForm /></Guard>} />
+                <Route path="orders" element={<Guard perm={VIEW.sales}><OrdersPage /></Guard>} />
+                <Route path="orders/new" element={<Guard perm="sale"><OrderForm /></Guard>} />
+                <Route path="orders/:id" element={<Guard perm={VIEW.sales}><OrderView /></Guard>} />
+                <Route path="orders/:id/edit" element={<Guard perm="sale"><OrderForm /></Guard>} />
                 <Route path="sales" element={<Guard perm={VIEW.sales}><SalesPage /></Guard>} />
                 <Route path="sales/new" element={<Guard perm="sale"><SaleForm /></Guard>} />
                 <Route path="sales/:id" element={<Guard perm={VIEW.sales}><SaleView /></Guard>} />

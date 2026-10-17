@@ -6,6 +6,7 @@ import {
   BookOpen,
   Boxes,
   Building2,
+  ClipboardList,
   Factory,
   FileText,
   History,
@@ -49,6 +50,7 @@ const nav: NavGroup[] = [
     label: 'nav.trading',
     items: [
       { to: '/purchases', label: 'nav.purchases', icon: ArrowDownToLine, perm: VIEW.purchases },
+      { to: '/orders', label: 'nav.orders', icon: ClipboardList, perm: VIEW.sales },
       { to: '/sales', label: 'nav.sales', icon: ShoppingCart, perm: VIEW.sales },
       { to: '/returns', label: 'nav.returns', icon: Undo2, perm: VIEW.returns },
     ],

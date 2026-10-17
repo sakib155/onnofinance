@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -33,7 +33,7 @@ export function SalesPage() {
     supabase.from('v_sale_dues').select('*').gte('sale_date', from).lte('sale_date', to).order('sale_date', { ascending: false }).order('created_at', { ascending: false }),
   )
   const q = search.trim().toLowerCase()
-  const rows = (data ?? []).filter((s) => !q || `${s.sale_no} ${s.customer_name} ${s.vehicle_no ?? ''}`.toLowerCase().includes(q))
+  const rows = (data ?? []).filter((s) => !q || `${s.sale_no} ${s.customer_name} ${s.vehicle_no ?? ''} ${s.po_number ?? ''}`.toLowerCase().includes(q))
   const showProfit = can('books')
 
   return (
@@ -70,6 +70,7 @@ export function SalesPage() {
           columns={[
             { key: 'date', header: t('common.date'), cell: (s) => date(s.sale_date), className: 'whitespace-nowrap' },
             { key: 'no', header: t('trading.invoiceNo'), cell: (s) => <span className="font-medium">{s.sale_no}</span> },
+            { key: 'po', header: t('orders.poNumber'), cell: (s) => s.po_number || <span className="text-slate-400">—</span> },
             { key: 'cus', header: t('trading.customer'), cell: (s) => nameOf({ name: s.customer_name, name_bn: s.customer_name_bn }) },
             { key: 'total', header: t('common.total'), align: 'right', cell: (s) => money(s.total_amount), footer: money(rows.reduce((a, s) => a + num(s.total_amount), 0)) },
             {
@@ -102,6 +103,27 @@ type SaleDetail = Sale & {
   customer: { id: string; name: string; name_bn: string | null; phone: string | null; address: string | null }
   broker: { name: string } | null
   warehouse: { name: string }
+  order: { order_no: string } | null
+}
+
+// Order and customer PO number lines in the document header
+function PoMeta({ s }: { s: SaleDetail }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {s.po_number && (
+        <div>
+          {t('orders.poNumber')}: <b>{s.po_number}</b>
+          {s.po_date && ` (${date(s.po_date)})`}
+        </div>
+      )}
+      {s.order && (
+        <div>
+          {t('orders.orderNo')}: {s.order.order_no}
+        </div>
+      )}
+    </>
+  )
 }
 
 type DocKind = 'invoice' | 'challan'
@@ -121,6 +143,7 @@ function InvoiceDoc({ s, dues, balance, createdBy }: { s: SaleDetail; dues?: { t
           <div>
             {t('common.date')}: {date(s.sale_date)}
           </div>
+          <PoMeta s={s} />
           {s.reference && (
             <div>
               {t('common.reference')}: {s.reference}
@@ -195,6 +218,7 @@ function ChallanDoc({ s, createdBy }: { s: SaleDetail; createdBy: string }) {
           <div>
             {t('common.date')}: {date(s.sale_date)}
           </div>
+          <PoMeta s={s} />
         </>
       }
       footer={<SignatureFooter createdBy={createdBy} createdAt={s.created_at} signers={[t('print.driverSignature'), t('print.receivedBy')]} />}
@@ -283,7 +307,7 @@ export function SaleView() {
     supabase
       .from('sales')
       .select(
-        '*, lines:sale_lines(*, item:items(*), warehouse:warehouses(name)), customer:parties!sales_customer_id_fkey(id, name, name_bn, phone, address), broker:parties!sales_broker_id_fkey(name), warehouse:warehouses(name)',
+        '*, lines:sale_lines(*, item:items(*), warehouse:warehouses(name)), customer:parties!sales_customer_id_fkey(id, name, name_bn, phone, address), broker:parties!sales_broker_id_fkey(name), warehouse:warehouses(name), order:sales_orders(order_no)',
       )
       .eq('id', id!)
       .single() as never,
@@ -315,6 +339,12 @@ export function SaleView() {
         subtitle={can('books') ? `${t('trading.grossProfit')}: ${money(profit)} · ${t('trading.costOfGoods')}: ${money(s.cost_amount)}` : undefined}
         actions={
           <>
+            {s.order_id && (
+              <ButtonLink to={`/orders/${s.order_id}`} variant="secondary">
+                <ClipboardList className="size-4" />
+                {s.order?.order_no}
+              </ButtonLink>
+            )}
             {can('sale') && (
               <ButtonLink to={`/sales/${s.id}/edit`} variant="secondary">
                 <Pencil className="size-4" />

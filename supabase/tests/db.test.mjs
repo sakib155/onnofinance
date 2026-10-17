@@ -163,6 +163,37 @@ await rpc('save_sale', { id: sale2, sale_date: '2026-02-21', customer_id: cus, w
   lines: [{ item_id: paddy, qty_kg: 300, rate: 36 }] })
 check('edit sale gives stock back', +(await one(`select sum(qty_kg) q from lot_allocations where source_id=$1`, [sale2])).q === 300)
 
+// Sales orders: customer's PO number, delivered in parts by invoices, tracked
+const ord = await rpc('save_sales_order', { order_date: '2026-02-20', customer_id: cus, po_number: 'PO-7788', po_date: '2026-02-19', delivery_date: '2026-02-28',
+  lines: [{ item_id: rice, bags: 10, bag_size_kg: 50, qty_kg: 500, rate: 56 }, { item_id: broken, qty_kg: 100, rate: 30 }] })
+const o0 = await one(`select * from v_sales_orders where id = $1`, [ord])
+check('order numbered ORD, valued, pending', o0.order_no.startsWith('ORD-') && +o0.goods_amount === 31000 && o0.progress === 'PENDING' && +o0.ordered_kg === 600, `${o0.order_no} ${o0.goods_amount} ${o0.progress}`)
+await expectError('an item only once per order', () => rpc('save_sales_order', { order_date: '2026-02-20', customer_id: cus, lines: [{ item_id: rice, qty_kg: 1 }, { item_id: rice, qty_kg: 2 }] }), 'already on the order')
+await expectError('order invoice must be for the same customer', () => rpc('save_sale', { sale_date: '2026-02-22', customer_id: brk, warehouse_id: wh, order_id: ord, lines: [{ item_id: rice, qty_kg: 10, rate: 56 }] }), 'another customer')
+const del1 = await rpc('save_sale', { sale_date: '2026-02-22', customer_id: cus, warehouse_id: wh, order_id: ord, po_number: 'ignored', lines: [{ item_id: rice, bags: 4, bag_size_kg: 50, qty_kg: 200, rate: 56 }] })
+const d1 = await one(`select po_number, po_date::text from sales where id = $1`, [del1])
+check('invoice carries the order PO number', d1.po_number === 'PO-7788' && d1.po_date === '2026-02-19', JSON.stringify(d1))
+const o1 = await one(`select * from v_sales_orders where id = $1`, [ord])
+const ol1 = await one(`select * from v_sales_order_lines where order_id = $1 and item_id = $2`, [ord, rice])
+check('partial delivery tracked per line', o1.progress === 'PARTIAL' && +o1.delivered_kg === 200 && +o1.remaining_kg === 400 && +ol1.remaining_kg === 300 && +ol1.remaining_bags === 6 && +o1.invoice_count === 1,
+  `${o1.progress} ${o1.delivered_kg} ${o1.remaining_kg} ${ol1.remaining_kg}`)
+await expectError('cannot cancel an order with deliveries', () => q(`select public.set_sales_order_status($1, 'CANCELLED')`, [ord]), 'close it instead')
+await expectError('cannot delete an order with invoices', () => q(`select public.delete_sales_order($1)`, [ord]), 'delete them first')
+await rpc('save_sales_order', { id: ord, order_date: '2026-02-20', customer_id: cus, po_number: 'PO-7788A', po_date: '2026-02-19', delivery_date: '2026-02-28',
+  lines: [{ item_id: rice, bags: 10, bag_size_kg: 50, qty_kg: 500, rate: 56 }, { item_id: broken, qty_kg: 100, rate: 30 }] })
+check('changing the order PO updates its invoices', (await one(`select po_number from sales where id = $1`, [del1])).po_number === 'PO-7788A')
+await rpc('save_sale', { sale_date: '2026-02-23', customer_id: cus, warehouse_id: wh, order_id: ord, lines: [{ item_id: rice, qty_kg: 300, rate: 56 }, { item_id: broken, qty_kg: 100, rate: 30 }] })
+check('fully delivered order', (await one(`select progress from v_sales_orders where id = $1`, [ord])).progress === 'DELIVERED')
+await q(`select public.set_sales_order_status($1, 'CLOSED')`, [ord])
+await expectError('closed order takes no new delivery', () => rpc('save_sale', { sale_date: '2026-02-24', customer_id: cus, warehouse_id: wh, order_id: ord, lines: [{ item_id: rice, qty_kg: 10, rate: 56 }] }), 'reopen it')
+check('invoice without order keeps a typed PO number', (await one(`select po_number from sales where id = $1`,
+  [await rpc('save_sale', { sale_date: '2026-02-24', customer_id: cus, warehouse_id: wh, po_number: ' PO-55 ', lines: [{ item_id: rice, qty_kg: 10, rate: 56 }] })])).po_number === 'PO-55')
+const ord2 = await rpc('save_sales_order', { order_date: '2026-02-20', customer_id: cus, delivery_date: '2026-01-01', lines: [{ item_id: rice, qty_kg: 50 }] })
+check('undelivered order past its date is overdue', (await one(`select overdue from v_sales_orders where id = $1`, [ord2])).overdue === true)
+await q(`select public.set_sales_order_status($1, 'CANCELLED')`, [ord2])
+await q(`select public.delete_sales_order($1)`, [ord2])
+check('empty order can be deleted', !(await one(`select 1 x from sales_orders where id = $1`, [ord2])))
+
 // Money
 const rcv = await rpc('save_money_txn', { txn_date: '2026-02-25', txn_type: 'RECEIPT', party_id: cus, money_account_id: cash, amount: 60000, allocations: null })
 const settled = await q(`select sale_id, amount from bill_settlements where money_txn_id = $1 order by id`, [rcv])
