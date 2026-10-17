@@ -9,7 +9,7 @@ import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
-import { rpc, useData, useParties, useSave, useWarehouses } from '@/lib/data'
+import { rpc, useData, useMethodFor, useParties, useSave, useWarehouses } from '@/lib/data'
 import { kg, money, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { lineAmount, LinesEditor, newLine, SumRow, type Line } from './LinesEditor'
@@ -113,6 +113,7 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
   )
   const [addingParty, setAddingParty] = useState(false)
   const [overLimit, setOverLimit] = useState(false)
+  const methodFor = useMethodFor()
   const set = (k: keyof typeof h) => (v: string) => setH((x) => ({ ...x, [k]: v }))
 
   const goods = lines.reduce((s, l) => s + lineAmount(l), 0)
@@ -223,7 +224,11 @@ function SaleEditor({ id, existing: s, defaultWarehouse }: { id?: string; existi
               {num(h.received_amount) > 0 && (
                 <>
                   <Field label={t('money.receivedInto')}>
-                    <AccountSelect value={h.received_account_id} onChange={set('received_account_id')} filter={isMoneyAccount} />
+                    <AccountSelect
+                      value={h.received_account_id}
+                      onChange={(id) => setH((x) => ({ ...x, received_account_id: id, received_method: methodFor(id, x.received_method) as typeof x.received_method }))}
+                      filter={isMoneyAccount}
+                    />
                   </Field>
                   <Field label={t('money.method')}>
                     <Select value={h.received_method} onChange={(e) => set('received_method')(e.target.value)}>

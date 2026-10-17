@@ -7,7 +7,7 @@ import { ErrorBox } from '@/components/ui/layout'
 import { Modal } from '@/components/ui/modal'
 import { useToast } from '@/components/ui/toast'
 import { usePartyDues, type Due } from '@/features/parties/PartyLedgerPage'
-import { rpc, useSave } from '@/lib/data'
+import { rpc, useMethodFor, useSave } from '@/lib/data'
 import { date, money, num, today } from '@/lib/format'
 import type { MoneyTxnType } from '@/lib/types'
 
@@ -78,6 +78,7 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
     notes: txn?.notes ?? '',
   })
   const set = (k: keyof typeof v) => (val: string) => setV((s) => ({ ...s, [k]: val }))
+  const methodFor = useMethodFor()
   const [auto, setAuto] = useState(true)
   const [alloc, setAlloc] = useState<Record<string, string>>({})
 
@@ -166,7 +167,11 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
           </Field>
         )}
         <Field label={type === 'TRANSFER' ? t('money.fromAccount') : inflow ? t('money.receivedInto') : t('money.paidFrom')}>
-          <AccountSelect value={v.money_account_id} onChange={set('money_account_id')} filter={isMoneyAccount} />
+          <AccountSelect
+            value={v.money_account_id}
+            onChange={(id) => setV((s) => ({ ...s, money_account_id: id, method: methodFor(id, s.method) as typeof s.method }))}
+            filter={isMoneyAccount}
+          />
         </Field>
         {type === 'TRANSFER' && (
           <Field label={t('money.toAccount')}>

@@ -8,7 +8,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/form'
 import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
 import { useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
-import { rpc, useData, useSave, useWarehouses } from '@/lib/data'
+import { rpc, useData, useMethodFor, useSave, useWarehouses } from '@/lib/data'
 import { money, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { lineAmount, LinesEditor, netKg, newLine, SumRow, type Line } from './LinesEditor'
@@ -114,6 +114,7 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
   )
   const [addingParty, setAddingParty] = useState(false)
   const [costsByUs, setCostsByUs] = useState(Boolean(p?.costs_account_id))
+  const methodFor = useMethodFor()
   const set = (k: keyof typeof h) => (v: string) => setH((s) => ({ ...s, [k]: v }))
 
   const goods = lines.reduce((s, l) => s + lineAmount(l), 0)
@@ -223,7 +224,11 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
               {num(h.paid_amount) > 0 && (
                 <>
                   <Field label={t('money.paidFrom')}>
-                    <AccountSelect value={h.paid_account_id} onChange={set('paid_account_id')} filter={isMoneyAccount} />
+                    <AccountSelect
+                      value={h.paid_account_id}
+                      onChange={(id) => setH((x) => ({ ...x, paid_account_id: id, paid_method: methodFor(id, x.paid_method) as typeof x.paid_method }))}
+                      filter={isMoneyAccount}
+                    />
                   </Field>
                   <Field label={t('money.method')}>
                     <Select value={h.paid_method} onChange={(e) => set('paid_method')(e.target.value)}>

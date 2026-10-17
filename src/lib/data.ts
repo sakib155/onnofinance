@@ -20,9 +20,15 @@ export async function rpc<T = unknown>(fn: string, args?: Record<string, unknown
 }
 
 // Mutation that refreshes all data afterwards: documents touch stock, ledgers and reports at once.
+// The refresh runs in the background so the screen can move on (e.g. leave a deleted record) right away.
 export function useSave<A, R = unknown>(fn: (args: A) => Promise<R>) {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries() })
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void qc.invalidateQueries()
+    },
+  })
 }
 
 // Common lookups
@@ -39,6 +45,13 @@ export const useWarehouses = () => useData<Warehouse[]>(['warehouses'], () => su
 
 export const useAccounts = () =>
   useData<Account[]>(['accounts'], () => supabase.from('v_account_balances').select('*').order('code'))
+
+// Payment method that matches the chosen cash/bank account (a cheque stays a cheque)
+export function useMethodFor() {
+  const { data } = useAccounts()
+  return (accountId: string, current: string) =>
+    current === 'CHEQUE' ? current : data?.find((a) => a.id === accountId)?.subtype === 'BANK' ? 'BANK' : 'CASH'
+}
 
 export function useMoneyAccounts() {
   const q = useAccounts()
