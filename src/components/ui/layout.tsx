@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { friendlyError } from '@/lib/errors'
 
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
@@ -79,7 +80,7 @@ export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-      {error instanceof Error ? error.message : String(error)}
+      {friendlyError(error instanceof Error ? error.message : String(error))}
     </div>
   )
 }

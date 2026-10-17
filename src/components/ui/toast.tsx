@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { friendlyError } from '@/lib/errors'
 
 type Toast = { id: number; message: string; tone: 'success' | 'error' }
 
@@ -34,4 +35,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export const useToast = () => useContext(ToastContext)
 
-export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))
+export const errorMessage = (e: unknown) => friendlyError(e instanceof Error ? e.message : String(e))

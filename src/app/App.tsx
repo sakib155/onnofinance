@@ -1,43 +1,53 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { lazy, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Loading } from '@/components/ui/layout'
 import { ToastProvider } from '@/components/ui/toast'
-import { AccountLedgerPage, AccountsPage } from '@/features/accounts/AccountsPage'
 import { Login, NotConfigured } from '@/features/auth/Login'
-import { Dashboard } from '@/features/dashboard/Dashboard'
-import { ChequesPage } from '@/features/money/ChequesPage'
-import { MoneyPage } from '@/features/money/MoneyPage'
-import { VoucherPage } from '@/features/money/VoucherPage'
-import { PartiesPage } from '@/features/parties/PartiesPage'
-import { PartyLedgerPage } from '@/features/parties/PartyLedgerPage'
-import { BatchForm } from '@/features/production/BatchForm'
-import { BatchView } from '@/features/production/BatchView'
-import { ProductionPage } from '@/features/production/ProductionPage'
-import { DuesPage } from '@/features/reports/DuesPage'
-import { BalanceSheetPage, CashSummaryPage, ProfitLossPage, TrialBalancePage } from '@/features/reports/FinancialReports'
-import { LotProfitPage } from '@/features/reports/LotProfitPage'
-import { ReportsPage } from '@/features/reports/ReportsPage'
-import { AuditPage } from '@/features/setup/AuditPage'
-import { CompanyPage } from '@/features/setup/CompanyPage'
-import { ItemsPage } from '@/features/setup/ItemsPage'
-import { TeamPage } from '@/features/setup/TeamPage'
-import { WarehousesPage } from '@/features/setup/WarehousesPage'
-import { LotsPage } from '@/features/stock/LotsPage'
-import { StockMovesPage } from '@/features/stock/StockMovesPage'
-import { StockPage } from '@/features/stock/StockPage'
-import { OrderForm, OrdersPage, OrderView } from '@/features/trading/OrdersPage'
-import { PurchaseForm } from '@/features/trading/PurchaseForm'
-import { PurchasesPage, PurchaseView } from '@/features/trading/PurchasesPage'
-import { ReturnsPage } from '@/features/trading/ReturnsPage'
-import { SaleForm } from '@/features/trading/SaleForm'
-import { SalesPage, SaleView } from '@/features/trading/SalesPage'
 import { isConfigured } from '@/lib/supabase'
 import { AuthProvider, useAuth, useCan, type Permission } from './auth'
 import { VIEW } from './Layout'
 import { Layout } from './Layout'
+
+// Each page is its own download, fetched the first time it is opened
+const AccountLedgerPage = lazy(() => import('@/features/accounts/AccountsPage').then((m) => ({ default: m.AccountLedgerPage })))
+const AccountsPage = lazy(() => import('@/features/accounts/AccountsPage').then((m) => ({ default: m.AccountsPage })))
+const Dashboard = lazy(() => import('@/features/dashboard/Dashboard').then((m) => ({ default: m.Dashboard })))
+const ChequesPage = lazy(() => import('@/features/money/ChequesPage').then((m) => ({ default: m.ChequesPage })))
+const MoneyPage = lazy(() => import('@/features/money/MoneyPage').then((m) => ({ default: m.MoneyPage })))
+const VoucherPage = lazy(() => import('@/features/money/VoucherPage').then((m) => ({ default: m.VoucherPage })))
+const PartiesPage = lazy(() => import('@/features/parties/PartiesPage').then((m) => ({ default: m.PartiesPage })))
+const PartyLedgerPage = lazy(() => import('@/features/parties/PartyLedgerPage').then((m) => ({ default: m.PartyLedgerPage })))
+const BatchForm = lazy(() => import('@/features/production/BatchForm').then((m) => ({ default: m.BatchForm })))
+const BatchView = lazy(() => import('@/features/production/BatchView').then((m) => ({ default: m.BatchView })))
+const ProductionPage = lazy(() => import('@/features/production/ProductionPage').then((m) => ({ default: m.ProductionPage })))
+const DuesPage = lazy(() => import('@/features/reports/DuesPage').then((m) => ({ default: m.DuesPage })))
+const BalanceSheetPage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.BalanceSheetPage })))
+const CashSummaryPage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.CashSummaryPage })))
+const ProfitLossPage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.ProfitLossPage })))
+const TrialBalancePage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.TrialBalancePage })))
+const LotProfitPage = lazy(() => import('@/features/reports/LotProfitPage').then((m) => ({ default: m.LotProfitPage })))
+const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
+const AuditPage = lazy(() => import('@/features/setup/AuditPage').then((m) => ({ default: m.AuditPage })))
+const CompanyPage = lazy(() => import('@/features/setup/CompanyPage').then((m) => ({ default: m.CompanyPage })))
+const ItemsPage = lazy(() => import('@/features/setup/ItemsPage').then((m) => ({ default: m.ItemsPage })))
+const TeamPage = lazy(() => import('@/features/setup/TeamPage').then((m) => ({ default: m.TeamPage })))
+const WarehousesPage = lazy(() => import('@/features/setup/WarehousesPage').then((m) => ({ default: m.WarehousesPage })))
+const LotsPage = lazy(() => import('@/features/stock/LotsPage').then((m) => ({ default: m.LotsPage })))
+const StockMovesPage = lazy(() => import('@/features/stock/StockMovesPage').then((m) => ({ default: m.StockMovesPage })))
+const StockPage = lazy(() => import('@/features/stock/StockPage').then((m) => ({ default: m.StockPage })))
+const OrderForm = lazy(() => import('@/features/trading/OrdersPage').then((m) => ({ default: m.OrderForm })))
+const OrdersPage = lazy(() => import('@/features/trading/OrdersPage').then((m) => ({ default: m.OrdersPage })))
+const OrderView = lazy(() => import('@/features/trading/OrdersPage').then((m) => ({ default: m.OrderView })))
+const PurchaseForm = lazy(() => import('@/features/trading/PurchaseForm').then((m) => ({ default: m.PurchaseForm })))
+const PurchasesPage = lazy(() => import('@/features/trading/PurchasesPage').then((m) => ({ default: m.PurchasesPage })))
+const PurchaseView = lazy(() => import('@/features/trading/PurchasesPage').then((m) => ({ default: m.PurchaseView })))
+const ReturnsPage = lazy(() => import('@/features/trading/ReturnsPage').then((m) => ({ default: m.ReturnsPage })))
+const SaleForm = lazy(() => import('@/features/trading/SaleForm').then((m) => ({ default: m.SaleForm })))
+const SalesPage = lazy(() => import('@/features/trading/SalesPage').then((m) => ({ default: m.SalesPage })))
+const SaleView = lazy(() => import('@/features/trading/SalesPage').then((m) => ({ default: m.SaleView })))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 } },

@@ -689,6 +689,18 @@ export const en = {
     milledKg: 'Milled kg',
     lotProfitNote: 'Paddy that went into milling earns its profit through the rice lots of that batch.',
   },
+  errors: {
+    required: 'Please choose or enter: {{field}}',
+    missing: 'Something required is empty. Check the party, godown, account and date.',
+    moneyAccount: 'cash or bank account',
+    positiveWeight: 'Weight must be more than 0 kg',
+    positiveAmount: 'Amount must be more than 0',
+    invalid: 'One of the values is not allowed. Please check the form.',
+    duplicate: 'This already exists (the code or name is used by another record)',
+    inUse: 'This is used in other records, so it cannot be deleted. Mark it inactive instead.',
+    session: 'Your sign-in has expired. Please sign in again.',
+    network: 'Could not reach the server. Check the internet connection and try again.',
+  },
   doc: {
     page: 'Page {{n}} of {{of}}',
     createdBy: 'Created by',

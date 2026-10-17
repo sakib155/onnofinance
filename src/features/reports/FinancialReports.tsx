@@ -1,19 +1,29 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { DateRange, Money, PrintButton } from '@/components/common'
+import { DateRange, Money, nameOf, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Input } from '@/components/ui/form'
 import { Card, Loading, PageHeader } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
-import { useData } from '@/lib/data'
+import { useAccounts, useData } from '@/lib/data'
 import { date, money, monthStart, num, today, yearStart } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { AccountType } from '@/lib/types'
 
+// Report functions return the English account name; show the Bangla one when the app is in Bangla
+function useAccountName() {
+  const { data } = useAccounts()
+  return (id: string | null, fallback: string) => {
+    const a = id ? data?.find((x) => x.id === id) : undefined
+    return a ? nameOf(a) : fallback
+  }
+}
+
 type PLRow = { account_id: string; code: string; name: string; type: AccountType; subtype: string; amount: number }
 
 export function ProfitLossPage() {
+  const accountName = useAccountName()
   const { t } = useTranslation()
   const [from, setFrom] = useState(yearStart())
   const [to, setTo] = useState(today())
@@ -32,7 +42,7 @@ export function ProfitLossPage() {
       {rs.map((r) => (
         <div key={r.account_id} className="flex justify-between border-b border-slate-100 py-1.5 text-sm">
           <Link to={`/accounts/${r.account_id}`} className="hover:text-brand-800 hover:underline">
-            {r.name}
+            {accountName(r.account_id, r.name)}
           </Link>
           <Money value={r.amount} colored />
         </div>
@@ -89,6 +99,7 @@ export function ProfitLossPage() {
 type BSRow = { section: 'ASSET' | 'LIABILITY' | 'EQUITY'; account_id: string | null; code: string; name: string; subtype: string; amount: number }
 
 export function BalanceSheetPage() {
+  const accountName = useAccountName()
   const { t } = useTranslation()
   const [asOf, setAsOf] = useState(today())
   const { data, isLoading } = useData<BSRow[]>(['bs', asOf], () => supabase.rpc('report_balance_sheet', { p_to: asOf }))
@@ -105,7 +116,7 @@ export function BalanceSheetPage() {
         <div key={r.code} className="flex justify-between border-b border-slate-100 py-1.5 text-sm">
           {r.account_id ? (
             <Link to={`/accounts/${r.account_id}`} className="hover:text-brand-800 hover:underline">
-              {r.name}
+              {accountName(r.account_id, r.name)}
             </Link>
           ) : (
             <span>{t('reports.profitToDate')}</span>
@@ -162,6 +173,7 @@ export function BalanceSheetPage() {
 type TBRow = { account_id: string; code: string; name: string; type: AccountType; debit: number; credit: number }
 
 export function TrialBalancePage() {
+  const accountName = useAccountName()
   const { t } = useTranslation()
   const [asOf, setAsOf] = useState(today())
   const { data, isLoading } = useData<TBRow[]>(['tb', asOf], () => supabase.rpc('report_trial_balance', { p_to: asOf }))
@@ -191,7 +203,7 @@ export function TrialBalancePage() {
               header: t('common.account'),
               cell: (r) => (
                 <Link to={`/accounts/${r.account_id}`} className="hover:text-brand-800 hover:underline">
-                  {r.name}
+                  {accountName(r.account_id, r.name)}
                 </Link>
               ),
             },
@@ -207,6 +219,7 @@ export function TrialBalancePage() {
 type CashRow = { account_id: string; name: string; subtype: string; opening: number; money_in: number; money_out: number; closing: number }
 
 export function CashSummaryPage() {
+  const accountName = useAccountName()
   const { t } = useTranslation()
   const [from, setFrom] = useState(today())
   const [to, setTo] = useState(today())
@@ -247,7 +260,7 @@ export function CashSummaryPage() {
               header: t('common.account'),
               cell: (r) => (
                 <Link to={`/accounts/${r.account_id}`} className="font-medium text-brand-800 hover:underline">
-                  {r.name}
+                  {accountName(r.account_id, r.name)}
                 </Link>
               ),
             },

@@ -14,7 +14,7 @@ import { date, money, num, qty } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { ITEM_CATEGORIES, type Item } from '@/lib/types'
 
-export const categoryTone = { PADDY: 'amber', UNSORTED: 'red', RICE: 'green', BYPRODUCT: 'violet', PACKAGING: 'blue', OTHER: 'slate' } as const
+export const categoryTone = { PADDY: 'amber', UNSORTED: 'blue', RICE: 'green', BYPRODUCT: 'violet', PACKAGING: 'slate', OTHER: 'slate' } as const
 
 function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void }) {
   const { t } = useTranslation()

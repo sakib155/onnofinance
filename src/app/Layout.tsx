@@ -25,9 +25,10 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router-dom'
+import { Loading } from '@/components/ui/layout'
 import { setLanguage } from '@/i18n'
 import { useAuth, useCan, type Permission } from './auth'
 
@@ -181,7 +182,9 @@ export function Layout() {
         </button>
       </header>
       <main className="mx-auto max-w-7xl p-4 sm:p-6">
-        <Outlet />
+        <Suspense fallback={<Loading />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

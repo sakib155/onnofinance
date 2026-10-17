@@ -125,6 +125,8 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
   const totalNet = lines.reduce((s, l) => s + netKg(l), 0)
 
   const save = useSave(async () => {
+    if (!h.supplier_id) throw new Error(t('errors.required', { field: t('trading.supplier') }))
+    if (!h.warehouse_id) throw new Error(t('errors.required', { field: t('trading.receiveInto') }))
     if (costsByUs && extras > 0 && !h.costs_account_id) throw new Error(t('trading.chooseCostsAccount'))
     return rpc<string>('save_purchase', {
       p: {

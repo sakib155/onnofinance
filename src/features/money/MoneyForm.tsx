@@ -87,8 +87,10 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
   const dues = usePartyDues(needsParty(type) ? v.party_id || undefined : undefined)
   const bills: Due[] = type === 'RECEIPT' ? dues.sales : type === 'PAYMENT' ? dues.purchases : []
 
-  const save = useSave(() =>
-    rpc<string>('save_money_txn', {
+  const save = useSave(() => {
+    if (!v.money_account_id) throw new Error(t('errors.required', { field: t('errors.moneyAccount') }))
+    if (num(v.amount) <= 0) throw new Error(t('errors.positiveAmount'))
+    return rpc<string>('save_money_txn', {
       p: {
         id: txn?.id,
         txn_type: type,
@@ -102,8 +104,8 @@ export function MoneyForm({ open, onClose, type: initialType, partyId, txn }: {
                 .map(([id, a]) => ({ [type === 'RECEIPT' ? 'sale_id' : 'purchase_id']: id, amount: num(a) }))
             : undefined,
       },
-    }),
-  )
+    })
+  })
 
   const submit = () =>
     save.mutate(undefined, {

@@ -198,8 +198,10 @@ function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
   const customer = customers?.find((c) => c.id === h.customer_id)
   const prevBalance = num(customer?.balance) - (s ? num(s.total_amount) - num(s.received_amount) : 0)
 
-  const save = useSave(() =>
-    rpc<string>('save_sale', {
+  const save = useSave(() => {
+    if (!h.customer_id) throw new Error(t('errors.required', { field: t('trading.customer') }))
+    if (!h.warehouse_id) throw new Error(t('errors.required', { field: t('trading.deliverFrom') }))
+    return rpc<string>('save_sale', {
       p: {
         id,
         ...h,
@@ -221,8 +223,8 @@ function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
             rate_unit: l.rate_unit,
           })),
       },
-    }),
-  )
+    })
+  })
 
   const dueAfter = prevBalance + total - num(h.received_amount)
   const limit = customer?.credit_limit != null ? num(customer.credit_limit) : null

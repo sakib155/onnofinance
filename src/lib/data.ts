@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query'
+import { friendlyError } from './errors'
 import { supabase } from './supabase'
 import type { Account, Item, Party, Warehouse } from './types'
 
@@ -6,7 +7,7 @@ type Result<T> = { data: T | null; error: { message: string } | null }
 
 export async function unwrap<T>(p: PromiseLike<Result<T>>): Promise<T> {
   const { data, error } = await p
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(friendlyError(error.message))
   return data as T
 }
 
