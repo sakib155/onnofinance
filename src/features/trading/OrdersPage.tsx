@@ -18,6 +18,7 @@ import { rpc, useData, useItems, useSave } from '@/lib/data'
 import { date, kg, money, num, qty, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { Item, RateUnit } from '@/lib/types'
+import { LineCard, LineCardField } from './LineCard'
 import { SumRow } from './LinesEditor'
 
 export type OrderStatus = 'OPEN' | 'CLOSED' | 'CANCELLED'
@@ -271,6 +272,25 @@ function OrderEditor({ id, existing: o }: { id?: string; existing?: SalesOrder &
       }),
     )
 
+  const removeLine = (key: string) => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== key) : [newFormLine()]))
+
+  // Line controls shared by the table (md and up) and the stacked cards (phones)
+  const lineItem = (l: FormLine) => <ItemPicker value={l.item_id} onChange={(v) => update(l.key, { item_id: v })} />
+  const lineBags = (l: FormLine) => <Input type="number" min="0" value={l.bags} onChange={(e) => update(l.key, { bags: e.target.value })} />
+  const lineBagSize = (l: FormLine) => (
+    <Input type="number" min="0" value={l.bag_size_kg} onChange={(e) => update(l.key, { bag_size_kg: e.target.value })} />
+  )
+  const lineWeight = (l: FormLine) => <Input type="number" min="0" value={l.qty_kg} onChange={(e) => update(l.key, { qty_kg: e.target.value })} />
+  const lineRate = (l: FormLine) => (
+    <Input type="number" min="0" step="0.01" value={l.rate} onChange={(e) => update(l.key, { rate: e.target.value })} placeholder={t('common.optional')} />
+  )
+  const lineRateUnit = (l: FormLine) => (
+    <Select value={l.rate_unit} onChange={(e) => update(l.key, { rate_unit: e.target.value as RateUnit })}>
+      <option value="KG">{t('unit.kg')}</option>
+      <option value="BAG">{t('unit.bag')}</option>
+    </Select>
+  )
+
   const save = useSave(() =>
     rpc<string>('save_sales_order', {
       p: {
@@ -324,7 +344,20 @@ function OrderEditor({ id, existing: o }: { id?: string; existing?: SalesOrder &
         </Card>
 
         <Card title={t('trading.items')}>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {lines.map((l) => (
+              <LineCard key={l.key} item={lineItem(l)} amount={money(formLineAmount(l))} onRemove={() => removeLine(l.key)}>
+                <LineCardField label={t('unit.bags')}>{lineBags(l)}</LineCardField>
+                <LineCardField label={t('trading.bagSize')}>{lineBagSize(l)}</LineCardField>
+                <LineCardField label={t('trading.weightKg')} className="col-span-2">
+                  {lineWeight(l)}
+                </LineCardField>
+                <LineCardField label={t('orders.agreedRate')}>{lineRate(l)}</LineCardField>
+                <LineCardField label={t('orders.per')}>{lineRateUnit(l)}</LineCardField>
+              </LineCard>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
@@ -341,30 +374,15 @@ function OrderEditor({ id, existing: o }: { id?: string; existing?: SalesOrder &
               <tbody>
                 {lines.map((l) => (
                   <tr key={l.key} className="align-top">
-                    <td className="py-1 pr-2">
-                      <ItemPicker value={l.item_id} onChange={(v) => update(l.key, { item_id: v })} />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <Input type="number" min="0" value={l.bags} onChange={(e) => update(l.key, { bags: e.target.value })} />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <Input type="number" min="0" value={l.bag_size_kg} onChange={(e) => update(l.key, { bag_size_kg: e.target.value })} />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <Input type="number" min="0" value={l.qty_kg} onChange={(e) => update(l.key, { qty_kg: e.target.value })} />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <Input type="number" min="0" step="0.01" value={l.rate} onChange={(e) => update(l.key, { rate: e.target.value })} placeholder={t('common.optional')} />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <Select value={l.rate_unit} onChange={(e) => update(l.key, { rate_unit: e.target.value as RateUnit })}>
-                        <option value="KG">{t('unit.kg')}</option>
-                        <option value="BAG">{t('unit.bag')}</option>
-                      </Select>
-                    </td>
+                    <td className="py-1 pr-2">{lineItem(l)}</td>
+                    <td className="py-1 pr-2">{lineBags(l)}</td>
+                    <td className="py-1 pr-2">{lineBagSize(l)}</td>
+                    <td className="py-1 pr-2">{lineWeight(l)}</td>
+                    <td className="py-1 pr-2">{lineRate(l)}</td>
+                    <td className="py-1 pr-2">{lineRateUnit(l)}</td>
                     <td className="py-1 pr-2 text-right tabular-nums">{money(formLineAmount(l))}</td>
                     <td className="py-1">
-                      <Button variant="ghost" size="sm" onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : [newFormLine()]))} title={t('common.remove')}>
+                      <Button variant="ghost" size="sm" onClick={() => removeLine(l.key)} title={t('common.remove')}>
                         <Trash2 className="size-4" />
                       </Button>
                     </td>
