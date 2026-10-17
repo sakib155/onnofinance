@@ -394,6 +394,7 @@ export const en = {
     billTo: 'Bill to',
     delivery: 'Delivery',
     purchaseBill: 'Purchase bill',
+    pdfFailed: 'Could not make the PDF',
     sellAllByproducts: 'Sell all by-products',
     sellHalfByproducts: 'Half',
     lineGodown: 'Godown for this line',

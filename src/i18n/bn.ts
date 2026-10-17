@@ -396,6 +396,7 @@ export const bn: typeof en = {
     billTo: 'ক্রেতা',
     delivery: 'ডেলিভারি',
     purchaseBill: 'ক্রয় বিল',
+    pdfFailed: 'PDF তৈরি করা যায়নি',
     sellAllByproducts: 'সব উপজাত বিক্রি',
     sellHalfByproducts: 'অর্ধেক',
     lineGodown: 'এই লাইনের গুদাম',

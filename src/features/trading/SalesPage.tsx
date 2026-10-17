@@ -140,6 +140,8 @@ export function SaleView() {
     setPdfBusy(true)
     try {
       await downloadPdf(ref.current, `${s.sale_no}.pdf`)
+    } catch (e) {
+      toast(`${t('trading.pdfFailed')}: ${errorMessage(e)}`, 'error')
     } finally {
       setPdfBusy(false)
     }
