@@ -114,11 +114,12 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
   const { t } = useTranslation()
   const toast = useToast()
   const mainCat = SECTION[batch.kind].main
-  // pre-fill this section's usual outputs: its main products, then by-products
-  const defaults = batch.kind === 'DRYER' ? ['U-01', 'U-02', 'B-03', 'B-02'] : ['R-01', 'R-02', 'B-01', 'B-04']
   const [when, setWhen] = useState(today())
   const [lines, setLines] = useState<OutLine[]>(() => {
-    const preset = defaults.map((c) => items.find((i) => i.code === c && i.is_active)).filter((i): i is Item => Boolean(i))
+    // pre-fill what this section gives (set per item on the Items page): main products first, then by-products
+    const preset = items
+      .filter((i) => i.is_active && i.output_of?.includes(batch.kind) && (i.category === mainCat || i.category === 'BYPRODUCT'))
+      .sort((a, b) => (a.category === mainCat ? 0 : 1) - (b.category === mainCat ? 0 : 1) || (a.code ?? '').localeCompare(b.code ?? ''))
     const list = preset.length ? preset : items.filter((i) => i.is_active && (i.category === mainCat || i.category === 'BYPRODUCT')).slice(0, 5)
     return list.map((i) => ({ key: i.id, item_id: i.id, bags: '', bag_size_kg: num(i.default_bag_kg) ? String(i.default_bag_kg) : '', qty_kg: '' }))
   })

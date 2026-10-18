@@ -323,6 +323,11 @@ export const en = {
     standardPriceHint: 'Today\'s market price. By-products coming out of a batch are valued at this price; update it when the market changes.',
     since: 'since {{date}}',
     reorderLevel: 'Warn below (kg)',
+    outputOf: 'Comes out of',
+    outputOfHint: 'Ticked sections list this item when a batch is finished',
+    outOf: 'From {{section}}',
+    outOfHint: 'What a finished batch of this section lists. Tick or untick "Comes out of" on an item to change it.',
+    per50: '= {{amount}} per 50 kg',
   },
   warehouses: { subtitle: 'Godowns and storage places', new: 'New warehouse', edit: 'Edit warehouse', location: 'Location' },
   company: {

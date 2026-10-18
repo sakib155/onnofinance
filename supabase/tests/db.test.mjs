@@ -87,6 +87,18 @@ check('edit purchase reposts', +(await one(`select goods_amount from purchases w
 
 // Production: dryer (paddy → unsorted + husk + bran), then sorter (unsorted → sorted rice + broken + polish)
 const unsorted = await item('U-01'), polish = await item('B-04')
+
+// What each mill section gives, in the mill's own names (0017), and running 0017 again changes nothing
+const outs = async (sec) => (await q(`select code from items where $1 = any(output_of) order by code`, [sec])).map((r) => r.code).join(',')
+check('dryer gives unsorted rice + Tush, Kura, Khud, Mora, Tamri', (await outs('DRYER')) === 'B-01,B-02,B-03,B-05,B-06,U-01,U-02', await outs('DRYER'))
+check('sorter gives sorted rice + Khud, Mora, Mota, Grader, Dust, Loose Stock', (await outs('SORTER')) === 'B-01,B-05,B-07,B-08,B-09,B-10,R-01,R-02', await outs('SORTER'))
+check('starter by-products carry the mill names', (await q(`select name from items where code in ('B-01','B-02','B-03') order by code`)).map((r) => r.name).join('|') === 'Khud (Broken Rice)|Kura (Rice Bran)|Tush (Husk)')
+await q(`update items set name = 'Our Khud', output_of = '{SORTER}' where code = 'B-01'`)
+await db.exec(fs.readFileSync(path.join(dir, '0017_section_outputs.sql'), 'utf8'))
+const k = await one(`select name, output_of from items where code = 'B-01'`)
+check('0017 again keeps the mill\'s own edits', k.name === 'Our Khud' && k.output_of.join() === 'SORTER' && +(await one(`select count(*) c from items where code like 'B-%'`)).c === 10, JSON.stringify(k))
+await q(`update items set name = 'Khud (Broken Rice)', output_of = '{DRYER,SORTER}' where code = 'B-01'`)
+await expectError('only Dryer/Sorter allowed as sections', () => q(`update items set output_of = '{KITCHEN}' where code = 'B-01'`), 'output_of')
 const price = async (id) => +(await one(`select standard_price from items where id = $1`, [id])).standard_price
 await rpc('save_stock_adjustment', { adjustment_date: '2026-01-01', kind: 'OPENING', item_id: husk, warehouse_id: wh, qty_kg: 1000, unit_cost: 4 })
 await expectError('dryer material must be paddy', () => rpc('save_production_batch', { kind: 'DRYER', start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,

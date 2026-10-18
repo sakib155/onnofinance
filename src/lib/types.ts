@@ -64,7 +64,10 @@ export type Item = {
   standard_price: number
   reorder_level_kg: number | null
   is_active: boolean
+  output_of: MillSection[] // the mill sections this item comes out of
 }
+
+export type MillSection = 'DRYER' | 'SORTER'
 
 export type Warehouse = {
   id: string
