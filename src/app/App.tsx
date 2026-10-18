@@ -22,6 +22,7 @@ const PartiesPage = lazy(() => import('@/features/parties/PartiesPage').then((m)
 const PartyLedgerPage = lazy(() => import('@/features/parties/PartyLedgerPage').then((m) => ({ default: m.PartyLedgerPage })))
 const BatchForm = lazy(() => import('@/features/production/BatchForm').then((m) => ({ default: m.BatchForm })))
 const BatchView = lazy(() => import('@/features/production/BatchView').then((m) => ({ default: m.BatchView })))
+const MillPage = lazy(() => import('@/features/production/MillPage').then((m) => ({ default: m.MillPage })))
 const ProductionPage = lazy(() => import('@/features/production/ProductionPage').then((m) => ({ default: m.ProductionPage })))
 const DuesPage = lazy(() => import('@/features/reports/DuesPage').then((m) => ({ default: m.DuesPage })))
 const BalanceSheetPage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.BalanceSheetPage })))
@@ -132,6 +133,7 @@ export function App() {
                 <Route path="sales/:id" element={<Guard perm={VIEW.sales}><SaleView /></Guard>} />
                 <Route path="sales/:id/edit" element={<Guard perm="sale"><SaleForm /></Guard>} />
                 <Route path="returns" element={<Guard perm={VIEW.returns}><ReturnsPage /></Guard>} />
+                <Route path="mill" element={<Guard perm={VIEW.production}><MillPage /></Guard>} />
                 <Route path="production" element={<Guard perm={VIEW.production}><ProductionPage /></Guard>} />
                 <Route path="production/new" element={<Guard perm="production"><BatchForm /></Guard>} />
                 <Route path="production/:id" element={<Guard perm={VIEW.production}><BatchView /></Guard>} />

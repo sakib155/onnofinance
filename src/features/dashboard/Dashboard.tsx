@@ -251,9 +251,16 @@ export function Dashboard() {
       <Card
         title={t('dashboard.millFlow')}
         actions={
-          <Link to="/stock" className="text-xs text-brand-700 hover:underline">
-            {t('nav.stockSummary')}
-          </Link>
+          <span className="flex gap-3">
+            {can(...VIEW.production) && (
+              <Link to="/mill" className="text-xs font-medium text-brand-700 hover:underline">
+                {t('dashboard.openMill')}
+              </Link>
+            )}
+            <Link to="/stock" className="text-xs text-brand-700 hover:underline">
+              {t('nav.stockSummary')}
+            </Link>
+          </span>
         }
       >
         <div className="grid items-stretch gap-2 md:grid-cols-[1fr_auto_1.4fr_auto_1fr_auto_1.4fr_auto_1fr]">

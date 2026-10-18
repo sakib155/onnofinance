@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import {
+  Activity,
   ArrowDownToLine,
   BarChart3,
   Banknote,
@@ -56,7 +57,13 @@ const nav: NavGroup[] = [
       { to: '/returns', label: 'nav.returns', icon: Undo2, perm: VIEW.returns },
     ],
   },
-  { label: 'nav.mill', items: [{ to: '/production', label: 'nav.production', icon: Factory, perm: VIEW.production }] },
+  {
+    label: 'nav.mill',
+    items: [
+      { to: '/mill', label: 'nav.millFloor', icon: Activity, perm: VIEW.production },
+      { to: '/production', label: 'nav.production', icon: Factory, perm: VIEW.production },
+    ],
+  },
   {
     label: 'nav.stock',
     items: [
