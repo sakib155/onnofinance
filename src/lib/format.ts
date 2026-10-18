@@ -56,3 +56,33 @@ export function balanceLabel(v: unknown) {
   if (Math.abs(n) < 0.005) return i18n.t('balance.settled')
   return n > 0 ? i18n.t('balance.receivable') : i18n.t('balance.payable')
 }
+
+// Date and time for a <input type="datetime-local">, on this device's clock: "2026-10-18T10:15"
+export function localDateTime(d = new Date()) {
+  return `${iso(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+export const toLocalInput = (v: string | null | undefined) => (v ? localDateTime(new Date(v)) : '')
+
+// Back from the input to a timestamp the database stores with its time zone
+export const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null)
+
+export function dateTime(v: string | null | undefined) {
+  if (!v) return ''
+  return new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(v))
+}
+
+// "3 h 40 min", "2 d 4 h"
+export function duration(minutes: unknown) {
+  const m = Math.max(0, Math.round(num(minutes)))
+  const d = Math.floor(m / 1440)
+  const h = Math.floor((m % 1440) / 60)
+  const min = m % 60
+  const u = (k: string, n: number) => `${qty(n, 0)} ${i18n.t(`unit.${k}`)}`
+  if (d) return h ? `${u('day', d)} ${u('hour', h)}` : u('day', d)
+  if (h) return min ? `${u('hour', h)} ${u('minute', min)}` : u('hour', h)
+  return u('minute', min)
+}
+
+export const minutesBetween = (from: string | null | undefined, to: Date | string = new Date()) =>
+  from ? (new Date(to).getTime() - new Date(from).getTime()) / 60_000 : 0

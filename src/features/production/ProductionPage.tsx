@@ -9,8 +9,9 @@ import { Select } from '@/components/ui/form'
 import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
-import { date, kg, money, num, qty } from '@/lib/format'
+import { date, dateTime, duration, kg, minutesBetween, money, num, qty } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
+import { useNow } from '@/lib/useNow'
 import { statusTone, type Batch, type BatchKind } from './types'
 
 export function useBatches(status?: string, kind?: BatchKind) {
@@ -40,6 +41,8 @@ export function ProductionPage() {
   const avgYield = avg((b) => b.main_yield_pct)
   const avgCost = avg((b) => b.main_cost_per_kg)
   const showCost = can('books')
+  const avgMinutes = avg((b) => b.minutes_taken)
+  const now = useNow()
 
   return (
     <>
@@ -66,9 +69,10 @@ export function ProductionPage() {
           </button>
         ))}
       </div>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={clsx('mb-4 grid gap-3 sm:grid-cols-2', showCost ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
         <Stat label={t('production.running')} value={running.length} hint={kg(running.reduce((s, b) => s + num(b.input_kg), 0))} />
         <Stat label={t('production.completed')} value={done.length} hint={kg(done.reduce((s, b) => s + num(b.main_kg), 0))} />
+        <Stat label={t('production.avgTime')} value={avgMinutes != null ? duration(avgMinutes) : '—'} hint={t(`production.avgTimeHint.${kind}`)} />
         <Stat label={t('production.avgYield')} value={avgYield != null ? `${qty(avgYield)}%` : '—'} hint={t(`production.yieldMeans.${kind}`)} />
         {showCost && <Stat label={t(`production.mainCostPerKg.${kind}`)} value={avgCost != null ? money(avgCost) : '—'} hint={t('production.average')} />}
       </div>
@@ -88,7 +92,20 @@ export function ProductionPage() {
           empty={t(`production.noneYet.${kind}`)}
           columns={[
             { key: 'no', header: t('production.batch'), cell: (b) => <span className="font-medium">{b.batch_no}</span> },
-            { key: 'start', header: t('production.started'), cell: (b) => date(b.start_date) },
+            { key: 'start', header: t('production.inputAt'), cell: (b) => (b.started_at ? dateTime(b.started_at) : date(b.start_date)), className: 'whitespace-nowrap' },
+            {
+              key: 'time',
+              header: t('production.timeTaken'),
+              align: 'right',
+              cell: (b) =>
+                b.status === 'RUNNING' ? (
+                  <span className="text-sky-700">{t('production.runningFor', { time: duration(minutesBetween(b.started_at, now)) })}</span>
+                ) : b.minutes_taken != null ? (
+                  duration(b.minutes_taken)
+                ) : (
+                  ''
+                ),
+            },
             { key: 'status', header: t('common.status'), cell: (b) => <Badge tone={statusTone(b.status)}>{t(`production.status.${b.status}`)}</Badge> },
             { key: 'in', header: t(`production.materialIn.${kind}`), align: 'right', cell: (b) => qty(b.input_kg) },
             { key: 'out', header: t(`production.mainOut.${kind}`), align: 'right', cell: (b) => (num(b.main_kg) ? qty(b.main_kg) : '') },

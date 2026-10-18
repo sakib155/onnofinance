@@ -104,7 +104,7 @@ await rpc('save_stock_adjustment', { adjustment_date: '2026-01-01', kind: 'OPENI
 await expectError('dryer material must be paddy', () => rpc('save_production_batch', { kind: 'DRYER', start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,
   inputs: [{ item_id: husk, qty_kg: 10 }] }), 'is not paddy')
 const bat = await rpc('save_production_batch', {
-  kind: 'DRYER', start_date: '2026-02-10', input_warehouse_id: wh, output_warehouse_id: wh,
+  kind: 'DRYER', start_date: '2026-02-10', started_at: '2026-02-10T08:15:00+06:00', input_warehouse_id: wh, output_warehouse_id: wh,
   inputs: [{ item_id: paddy, bags: 93, qty_kg: 7000 }, { item_id: husk, qty_kg: 300, purpose: 'CONSUMABLE' }],
 })
 const b0 = await one(`select * from production_batches where id = $1`, [bat])
@@ -117,10 +117,13 @@ await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: 
 const c2 = await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: '2026-02-13', cost_head_id: labour, amount: 3000, party_id: brk })
 await db.query(`select public.delete_production_cost($1)`, [c2])
 await rpc('save_production_cost', { batch_id: bat, stage: 'GENERAL', cost_date: '2026-02-13', cost_head_id: labour, amount: 2000, paid_account_id: cash })
-const complete = (id, date, outputs) => db.query(`select public.complete_production_batch($1::jsonb)`, [JSON.stringify({ batch_id: id, completed_date: date, outputs })])
+const complete = (id, date, outputs, completed_at) => db.query(`select public.complete_production_batch($1::jsonb)`, [JSON.stringify({ batch_id: id, completed_date: date, outputs, completed_at })])
 await expectError('dryer cannot output sorted rice', () => complete(bat, '2026-02-14', [{ item_id: rice, qty_kg: 4900 }]), 'unsorted rice and by-products only')
 await expectError('dryer needs an unsorted rice output', () => complete(bat, '2026-02-14', [{ item_id: husk, qty_kg: 1400 }]), 'Add the unsorted rice')
-await complete(bat, '2026-02-14', [{ item_id: unsorted, bags: 98, bag_size_kg: 50, qty_kg: 4900 }, { item_id: husk, qty_kg: 1400 }, { item_id: bran, qty_kg: 500 }])
+await expectError('finish time before start time is refused', () => complete(bat, '2026-02-10', [{ item_id: unsorted, qty_kg: 4900 }], '2026-02-10T07:00:00+06:00'), 'before the start time')
+await complete(bat, '2026-02-14', [{ item_id: unsorted, bags: 98, bag_size_kg: 50, qty_kg: 4900 }, { item_id: husk, qty_kg: 1400 }, { item_id: bran, qty_kg: 500 }], '2026-02-14T11:55:00+06:00')
+const bt = await one(`select started_at, completed_at, minutes_taken from v_production_batches where id = $1`, [bat])
+check('batch keeps the input and output times and how long it took', +bt.minutes_taken === 4 * 1440 + 220 && new Date(bt.started_at).toISOString() === '2026-02-10T02:15:00.000Z', JSON.stringify(bt))
 const dryTotal = +b0.input_cost + 7000
 const byVal = 1400 * (await price(husk)) + 500 * (await price(bran))
 const dv = await one(`select * from v_production_batches where id = $1`, [bat])
@@ -142,6 +145,10 @@ const sbat = await rpc('save_production_batch', { kind: 'SORTER', start_date: '2
 await rpc('save_production_cost', { batch_id: sbat, stage: 'GENERAL', cost_date: '2026-02-16', cost_head_id: elec, amount: 1500, paid_account_id: cash })
 await expectError('sorter needs a sorted rice output', () => complete(sbat, '2026-02-17', [{ item_id: broken, qty_kg: 300 }]), 'Add the sorted rice')
 await complete(sbat, '2026-02-17', [{ item_id: rice, bags: 90, bag_size_kg: 50, qty_kg: 4500 }, { item_id: broken, qty_kg: 300 }, { item_id: polish, qty_kg: 400 }])
+const used = await q(`select origin_type, origin_no, supplier_name, qty_kg from v_batch_input_lots where batch_id = $1 order by origin_type`, [sbat])
+check('sorter batch shows the lots it used: own dryer output and the other mill\'s purchase', used.length === 2 && used[0].origin_type === 'PRODUCTION' && used[0].origin_no.startsWith('DRY-') && used[1].supplier_name === 'Other Mill' && used.reduce((a, r) => a + +r.qty_kg, 0) === 5400, JSON.stringify(used))
+const runTime = await one(`select started_at is not null s, completed_at is not null c from production_batches where id = $1`, [sbat])
+check('times default to now when not entered', runTime.s && runTime.c)
 const sv = await one(`select * from v_production_batches where id = $1`, [sbat])
 const sortTotal = (dryTotal - byVal) + 500 * 44 + 1500
 const sortBy = 300 * (await price(broken)) + 400 * (await price(polish))
@@ -226,6 +233,8 @@ await rpc('save_money_txn', { txn_date: '2026-03-01', txn_type: 'LOAN_REPAY', pa
 
 // Stock transfer, adjustments, returns
 const trf = await rpc('save_stock_transfer', { transfer_date: '2026-03-01', item_id: rice, from_warehouse_id: wh, to_warehouse_id: wh2, qty_kg: 500, bags: 10 })
+const moved = await q(`select origin_type, origin_no from v_lots where warehouse_id = $1 and item_id = $2`, [wh2, rice])
+check('a lot moved to another godown still shows where it came from', moved.length > 0 && moved.every((m) => ['PRODUCTION', 'PURCHASE'].includes(m.origin_type) && m.origin_no), JSON.stringify(moved))
 check('transfer moves stock', +(await one(`select qty_kg from v_stock_summary where item_id=$1 and warehouse_id=$2`, [rice, wh2])).qty_kg === 500)
 await rpc('save_stock_adjustment', { adjustment_date: '2026-03-01', kind: 'LOSS', item_id: rice, warehouse_id: wh2, qty_kg: 20, reason: 'rat damage' })
 await rpc('save_stock_adjustment', { adjustment_date: '2026-01-01', kind: 'OPENING', item_id: broken, warehouse_id: wh, qty_kg: 1000, unit_cost: 28 })

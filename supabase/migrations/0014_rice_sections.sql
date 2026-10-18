@@ -17,7 +17,7 @@
 drop view if exists public.v_production_batches;
 drop view if exists public.v_lot_profit;
 drop view if exists public.v_stock_summary;
-drop view if exists public.v_lots;
+drop view if exists public.v_lots cascade;  -- 0018 adds v_batch_input_lots on top; it is recreated there
 
 alter table public.items alter column category type text using category::text;
 drop type if exists public.item_category;

@@ -5,7 +5,7 @@ import i18n from '@/i18n'
 import { useAccounts, useData, useItems, useParties, useWarehouses } from '@/lib/data'
 import { kg, money, num, qty } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
-import type { Account, ItemCategory, Lot } from '@/lib/types'
+import { lotOrigin, type Account, type ItemCategory, type Lot } from '@/lib/types'
 import { Button } from './ui/button'
 import { Combobox } from './ui/combobox'
 import { Input, Select } from './ui/form'
@@ -120,15 +120,20 @@ export function LotPicker({ itemId, warehouseId, value, onChange }: {
   value: string | null | undefined
   onChange: (v: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data } = useOpenLots(itemId, warehouseId)
   const options = [
     { value: '', label: t('stock.fifo') },
-    ...(data ?? []).map((l) => ({
-      value: l.id,
-      label: `${l.lot_no} · ${kg(l.remaining_kg)}`,
-      hint: `${l.warehouse_name} · ${money(l.unit_cost)}/${t('unit.kg')}`,
-    })),
+    ...(data ?? []).map((l) => {
+      const from = lotOrigin(l, i18n.language === 'bn')
+      return {
+        value: l.id,
+        // the supplier (or batch) is part of the label so a lot can be picked by who it was bought from
+        label: `${l.lot_no}${from ? ` · ${from}` : ''} · ${kg(l.remaining_kg)}`,
+        hint: `${l.warehouse_name} · ${money(l.unit_cost)}/${t('unit.kg')}`,
+        search: `${l.lot_no} ${l.supplier_name ?? ''} ${l.supplier_name_bn ?? ''} ${l.origin_no ?? ''}`,
+      }
+    }),
   ]
   return <Combobox value={value ?? ''} onChange={onChange} options={options} disabled={!itemId} />
 }

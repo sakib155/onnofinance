@@ -25,13 +25,14 @@ import { VIEW } from '@/app/Layout'
 import { nameOf } from '@/components/common'
 import { Badge, Card, Loading, type Tone } from '@/components/ui/layout'
 import { useBatches } from '@/features/production/ProductionPage'
-import type { BatchKind } from '@/features/production/types'
+import type { Batch, BatchKind } from '@/features/production/types'
 import { useStockSummary } from '@/features/stock/StockPage'
 import type { OrderRow } from '@/features/trading/OrdersPage'
 import { ProgressBadge } from '@/features/trading/OrdersPage'
 import { useData, useParties } from '@/lib/data'
-import { ageDays, date, kg, money, monthStart, num, qty, today, yearStart } from '@/lib/format'
+import { ageDays, date, duration, kg, minutesBetween, money, monthStart, num, qty, today, yearStart } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
+import { useNow } from '@/lib/useNow'
 
 type Section = {
   running: number
@@ -258,11 +259,11 @@ export function Dashboard() {
         <div className="grid items-stretch gap-2 md:grid-cols-[1fr_auto_1.4fr_auto_1fr_auto_1.4fr_auto_1fr]">
           <StockNode label={t('category.PADDY')} kg={stockOf('PADDY').kg} value={books ? stockOf('PADDY').value : undefined} tone="amber" />
           <Arrow />
-          <SectionNode kind="DRYER" s={s.sections.DRYER} period={periodLabel} books={books} />
+          <SectionNode kind="DRYER" s={s.sections.DRYER} period={periodLabel} books={books} running={(running ?? []).filter((b) => b.kind === 'DRYER')} />
           <Arrow />
           <StockNode label={t('category.UNSORTED')} kg={stockOf('UNSORTED').kg} value={books ? stockOf('UNSORTED').value : undefined} tone="sky" />
           <Arrow />
-          <SectionNode kind="SORTER" s={s.sections.SORTER} period={periodLabel} books={books} />
+          <SectionNode kind="SORTER" s={s.sections.SORTER} period={periodLabel} books={books} running={(running ?? []).filter((b) => b.kind === 'SORTER')} />
           <Arrow />
           <StockNode label={t('category.RICE')} kg={stockOf('RICE').kg} value={books ? stockOf('RICE').value : undefined} tone="brand" />
         </div>
@@ -446,8 +447,11 @@ function StockNode({ label, kg: kgValue, value, tone }: { label: string; kg: num
   )
 }
 
-function SectionNode({ kind, s, period, books }: { kind: BatchKind; s: Section; period: string; books: boolean }) {
+function SectionNode({ kind, s, period, books, running }: { kind: BatchKind; s: Section; period: string; books: boolean; running: Batch[] }) {
   const { t } = useTranslation()
+  const now = useNow()
+  // the batch that has been in the section longest
+  const oldest = [...running].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''))[0]
   return (
     <Link to={`/production?section=${kind}`} className="flex flex-col justify-center rounded-xl border border-dashed border-slate-300 bg-white p-3 hover:border-slate-400">
       <div className="flex items-center justify-between gap-2">
@@ -457,6 +461,11 @@ function SectionNode({ kind, s, period, books }: { kind: BatchKind; s: Section; 
         </span>
         {num(s.running) > 0 ? <Badge tone="blue">{t('dashboard.runningCount', { count: num(s.running) })}</Badge> : <Badge>{t('dashboard.idle')}</Badge>}
       </div>
+      {oldest && (
+        <div className="mt-2 rounded-md bg-sky-50 px-2 py-1 text-xs text-sky-800">
+          {oldest.batch_no} · {kg(oldest.input_kg)} · {t('production.runningFor', { time: duration(minutesBetween(oldest.started_at, now)) })}
+        </div>
+      )}
       <dl className="mt-2 space-y-0.5 text-xs">
         <SmallRow k={t('dashboard.processed', { period })} v={kg(s.material_kg)} />
         <SmallRow k={t('production.avgYield')} v={s.yield_pct != null ? pct(num(s.yield_pct)) : '—'} />

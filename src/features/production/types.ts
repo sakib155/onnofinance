@@ -34,6 +34,9 @@ export type Batch = {
   total_yield_pct: number | null
   main_cost_per_kg: number | null
   completed_date: string | null
+  started_at: string | null // when the material went in
+  completed_at: string | null // when the output was entered
+  minutes_taken: number | null
 }
 
 export type BatchInput = {
@@ -46,6 +49,21 @@ export type BatchInput = {
   purpose: 'MATERIAL' | 'CONSUMABLE'
   item: Item
   lot: { lot_no: string; source_type: string } | null
+}
+
+// The lots a batch actually used (picked, or oldest-first), with where each came from
+export type BatchInputLot = {
+  input_id: string
+  purpose: 'MATERIAL' | 'CONSUMABLE'
+  lot_id: string
+  lot_no: string
+  origin_type: string
+  origin_no: string | null
+  supplier_id: string | null
+  supplier_name: string | null
+  supplier_name_bn: string | null
+  qty_kg: number
+  cost: number
 }
 
 export type BatchCost = {

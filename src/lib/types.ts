@@ -95,7 +95,17 @@ export type Lot = {
   unit_cost: number
   remaining_kg: number
   remaining_bags: number
+  // where the stock first came from (followed back through godown transfers)
+  origin_type: string
+  origin_no: string | null
+  supplier_id: string | null
+  supplier_name: string | null
+  supplier_name_bn: string | null
 }
+
+// Shown wherever a lot is listed: the supplier for bought stock, else the purchase/batch it came from
+export const lotOrigin = (l: Pick<Lot, 'supplier_name' | 'supplier_name_bn' | 'origin_no'>, bn: boolean) =>
+  (bn && l.supplier_name_bn) || l.supplier_name || l.origin_no || ''
 
 export type RateUnit = 'KG' | 'BAG'
 

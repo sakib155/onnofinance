@@ -75,7 +75,7 @@ export const en = {
     previous: 'Previous',
     next: 'Next',
   },
-  unit: { kg: 'kg', bag: 'bag', bags: 'Bags' },
+  unit: { kg: 'kg', bag: 'bag', bags: 'Bags', minute: 'min', hour: 'h', day: 'd' },
   balance: {
     receivable: 'They owe us',
     payable: 'We owe them',
@@ -543,6 +543,7 @@ export const en = {
     against: 'Against',
   },
   stock: {
+    from: 'From',
     subtitle: 'What is in the godowns right now',
     lotsSubtitle: 'Each purchase or milling output is a lot with its own cost',
     movesSubtitle: 'Every movement of stock, plus transfers between godowns and adjustments',
@@ -577,6 +578,20 @@ export const en = {
     deleteMoveConfirm: 'Undo this transfer or adjustment?',
   },
   production: {
+    startTime: 'Input time',
+    startTimeHint: 'When the material went in. Defaults to now.',
+    finishTime: 'Output time',
+    finishTimeHint: 'When the output came out. Defaults to now.',
+    finishBeforeStart: 'The output time is before the input time',
+    tookPreview: 'Went in {{started}} · took {{took}}',
+    inputAt: 'Input',
+    outputAt: 'Output',
+    runningFor: 'running for {{time}}',
+    took: 'took {{time}}',
+    timeTaken: 'Time taken',
+    avgTime: 'Average time',
+    avgTimeHint: { DRYER: 'From paddy in to unsorted rice out', SORTER: 'From unsorted rice in to sorted rice out' },
+    lotsAndSuppliers: 'Lot · supplier',
     section: { DRYER: 'Dryer section', SORTER: 'Sorter section' },
     sectionLabel: 'Section',
     sectionHelp: {

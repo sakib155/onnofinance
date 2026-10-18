@@ -77,7 +77,7 @@ export const bn: typeof en = {
     previous: 'আগের',
     next: 'পরের',
   },
-  unit: { kg: 'কেজি', bag: 'বস্তা', bags: 'বস্তা' },
+  unit: { kg: 'কেজি', bag: 'বস্তা', bags: 'বস্তা', minute: 'মিনিট', hour: 'ঘণ্টা', day: 'দিন' },
   balance: {
     receivable: 'আমরা পাব',
     payable: 'আমরা দেব',
@@ -545,6 +545,7 @@ export const bn: typeof en = {
     against: 'যার বিপরীতে',
   },
   stock: {
+    from: 'যার কাছ থেকে',
     subtitle: 'এই মুহূর্তে গুদামে কী আছে',
     lotsSubtitle: 'প্রতিটি ক্রয় বা মিলিংয়ের মাল আলাদা লট, নিজস্ব খরচসহ',
     movesSubtitle: 'মালের সব আসা-যাওয়া, গুদাম বদল ও সমন্বয়',
@@ -579,6 +580,20 @@ export const bn: typeof en = {
     deleteMoveConfirm: 'এই গুদাম বদল বা সমন্বয় বাতিল করবেন?',
   },
   production: {
+    startTime: 'ইনপুটের সময়',
+    startTimeHint: 'মাল কখন দেওয়া হয়েছে। খালি রাখলে এখনকার সময়।',
+    finishTime: 'আউটপুটের সময়',
+    finishTimeHint: 'আউটপুট কখন বের হয়েছে। খালি রাখলে এখনকার সময়।',
+    finishBeforeStart: 'আউটপুটের সময় ইনপুটের সময়ের আগে হয়েছে',
+    tookPreview: '{{started}}-এ দেওয়া · সময় লেগেছে {{took}}',
+    inputAt: 'ইনপুট',
+    outputAt: 'আউটপুট',
+    runningFor: '{{time}} ধরে চলছে',
+    took: 'সময় লেগেছে {{time}}',
+    timeTaken: 'সময় লেগেছে',
+    avgTime: 'গড় সময়',
+    avgTimeHint: { DRYER: 'ধান দেওয়া থেকে আনসর্টেড চাল বের হওয়া পর্যন্ত', SORTER: 'আনসর্টেড চাল দেওয়া থেকে সর্টেড চাল বের হওয়া পর্যন্ত' },
+    lotsAndSuppliers: 'লট · সরবরাহকারী',
     section: { DRYER: 'ড্রায়ার সেকশন', SORTER: 'সর্টার সেকশন' },
     sectionLabel: 'সেকশন',
     sectionHelp: {

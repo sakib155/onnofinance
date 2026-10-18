@@ -11,10 +11,11 @@ import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { rpc, useData, useItems, useSave } from '@/lib/data'
-import { date, kg, money, num, qty, today } from '@/lib/format'
+import { date, dateTime, duration, fromLocalInput, kg, localDateTime, minutesBetween, money, num, qty, today } from '@/lib/format'
+import { useNow } from '@/lib/useNow'
 import { supabase } from '@/lib/supabase'
-import type { Item } from '@/lib/types'
-import { kindTone, SECTION, statusTone, type Batch, type BatchCost, type BatchInput, type BatchOutput } from './types'
+import { lotOrigin, type Item } from '@/lib/types'
+import { kindTone, SECTION, statusTone, type Batch, type BatchCost, type BatchInput, type BatchInputLot, type BatchOutput } from './types'
 
 type Detail = Batch & { inputs: BatchInput[]; costs: BatchCost[]; outputs: BatchOutput[] }
 
@@ -114,7 +115,8 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
   const { t } = useTranslation()
   const toast = useToast()
   const mainCat = SECTION[batch.kind].main
-  const [when, setWhen] = useState(today())
+  const [when, setWhen] = useState(localDateTime())
+  const took = minutesBetween(batch.started_at, fromLocalInput(when) ?? new Date())
   const [lines, setLines] = useState<OutLine[]>(() => {
     // pre-fill what this section gives (set per item on the Items page): main products first, then by-products
     const preset = items
@@ -141,7 +143,8 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
     rpc('complete_production_batch', {
       p: {
         batch_id: batch.id,
-        completed_date: when,
+        completed_date: when.slice(0, 10),
+        completed_at: fromLocalInput(when),
         outputs: p.used.map((l) => ({ item_id: l.item_id, bags: num(l.bags), bag_size_kg: num(l.bag_size_kg), qty_kg: num(l.qty_kg) })),
       },
     }),
@@ -166,9 +169,16 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
       }
     >
       <p className="mb-3 text-sm text-slate-500">{t(`production.completeHelp.${batch.kind}`)}</p>
-      <Field label={t('production.completedOn')} className="mb-3 max-w-48">
-        <Input type="date" value={when} onChange={(e) => setWhen(e.target.value)} />
-      </Field>
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <Field label={t('production.finishTime')} hint={t('production.finishTimeHint')} className="max-w-60">
+          <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+        </Field>
+        {batch.started_at && (
+          <div className={took < 0 ? 'pb-6 text-sm text-red-600' : 'pb-6 text-sm text-slate-600'}>
+            {took < 0 ? t('production.finishBeforeStart') : t('production.tookPreview', { started: dateTime(batch.started_at), took: duration(took) })}
+          </div>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
@@ -259,7 +269,7 @@ function CompleteForm({ batch, items, onClose }: { batch: Detail; items: Item[];
 
 export function BatchView() {
   const { id } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const can = useCan()
   const toast = useToast()
   const navigate = useNavigate()
@@ -281,6 +291,9 @@ export function BatchView() {
     if (batch.error || rest.error) return { data: null, error: batch.error ?? rest.error }
     return { data: { ...(batch.data as Batch), ...(rest.data as object) } as Detail, error: null }
   })
+  // the lots actually used (picked or oldest-first) and the supplier each came from
+  const { data: lotsUsed } = useData<BatchInputLot[]>(['batch-lots', id], () => supabase.from('v_batch_input_lots').select('*').eq('batch_id', id!))
+  const now = useNow()
   const delCost = useSave((costId: string) => rpc('delete_production_cost', { p_id: costId }))
   const delBatch = useSave(() => rpc('delete_production_batch', { p_id: id }))
   const reopen = useSave(() => rpc('reopen_production_batch', { p_id: id }))
@@ -292,12 +305,28 @@ export function BatchView() {
   const consumables = b.inputs.filter((i) => i.purpose === 'CONSUMABLE')
   const showCost = can('books')
   const err = (e: unknown) => toast(errorMessage(e), 'error')
+  const bn = i18n.language === 'bn'
+  const minutes = b.status === 'COMPLETED' ? b.minutes_taken : open ? minutesBetween(b.started_at, now) : null
   const inputColumns = [
     { key: 'item', header: t('common.item'), cell: (i: BatchInput) => nameOf(i.item) },
     {
       key: 'lot',
-      header: t('stock.lot'),
-      cell: (i: BatchInput) => <span className="text-xs text-slate-500">{i.lot ? `${i.lot.lot_no} · ${t(`source.${i.lot.source_type}`)}` : t('stock.fifo')}</span>,
+      header: t('production.lotsAndSuppliers'),
+      cell: (i: BatchInput) => {
+        const lots = (lotsUsed ?? []).filter((l) => l.input_id === i.id)
+        if (!lots.length) return <span className="text-xs text-slate-500">{t('stock.fifo')}</span>
+        return (
+          <div className="space-y-0.5 text-xs">
+            {lots.map((l) => (
+              <div key={l.lot_id}>
+                <span className="font-medium text-slate-700">{l.lot_no}</span>
+                {lotOrigin(l, bn) && <span className="text-slate-500"> · {lotOrigin(l, bn)}</span>}
+                {lots.length > 1 && <span className="text-slate-500"> · {kg(l.qty_kg)}</span>}
+              </div>
+            ))}
+          </div>
+        )
+      },
     },
     { key: 'bags', header: t('unit.bags'), align: 'right' as const, cell: (i: BatchInput) => (num(i.bags) ? qty(i.bags) : '') },
     { key: 'kg', header: t('unit.kg'), align: 'right' as const, cell: (i: BatchInput) => qty(i.qty_kg) },
@@ -317,7 +346,13 @@ export function BatchView() {
             <Badge tone={statusTone(b.status)}>{t(`production.status.${b.status}`)}</Badge>
           </span>
         }
-        subtitle={`${t('production.started')} ${date(b.start_date)}${b.completed_date ? ` · ${t('production.completedOn')} ${date(b.completed_date)}` : ''}`}
+        subtitle={[
+          b.started_at && `${t('production.inputAt')} ${dateTime(b.started_at)}`,
+          b.completed_at && `${t('production.outputAt')} ${dateTime(b.completed_at)}`,
+          minutes != null && (open ? t('production.runningFor', { time: duration(minutes) }) : t('production.took', { time: duration(minutes) })),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           <>
             {open && can('production') && (

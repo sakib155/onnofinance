@@ -9,7 +9,7 @@ import { Field, Input, Textarea } from '@/components/ui/form'
 import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
 import { useToast } from '@/components/ui/toast'
 import { rpc, useData, useItems, useSave, useWarehouses } from '@/lib/data'
-import { kg, num, today } from '@/lib/format'
+import { fromLocalInput, kg, localDateTime, num, toLocalInput } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { ItemCategory } from '@/lib/types'
 import { SECTION, type Batch, type BatchInput, type BatchKind } from './types'
@@ -96,7 +96,7 @@ function BatchEditor({ id, kind: initialKind, existing: b, defaultWarehouse }: {
   const navigate = useNavigate()
   const [kind, setKind] = useState<BatchKind>(initialKind)
   const [h, setH] = useState(() => ({
-    start_date: b?.start_date ?? today(),
+    started_at: b?.started_at ? toLocalInput(b.started_at) : localDateTime(),
     input_warehouse_id: b?.input_warehouse_id ?? defaultWarehouse,
     output_warehouse_id: b?.output_warehouse_id ?? defaultWarehouse,
     notes: b?.notes ?? '',
@@ -114,6 +114,9 @@ function BatchEditor({ id, kind: initialKind, existing: b, defaultWarehouse }: {
         id,
         kind,
         ...h,
+        // the date part keeps the document date (stock, books) in step with the time entered
+        start_date: h.started_at.slice(0, 10),
+        started_at: fromLocalInput(h.started_at),
         inputs: [
           ...materials.filter((i) => i.item_id).map((i) => ({ item_id: i.item_id, lot_id: i.lot_id, bags: num(i.bags), qty_kg: num(i.qty_kg), purpose: 'MATERIAL' })),
           ...consumables.filter((i) => i.item_id).map((i) => ({ item_id: i.item_id, lot_id: i.lot_id, bags: num(i.bags), qty_kg: num(i.qty_kg), purpose: 'CONSUMABLE' })),
@@ -149,8 +152,8 @@ function BatchEditor({ id, kind: initialKind, existing: b, defaultWarehouse }: {
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label={t('production.startDate')}>
-              <Input type="date" value={h.start_date} onChange={(e) => setH({ ...h, start_date: e.target.value })} />
+            <Field label={t('production.startTime')} hint={t('production.startTimeHint')}>
+              <Input type="datetime-local" value={h.started_at} onChange={(e) => setH({ ...h, started_at: e.target.value })} />
             </Field>
             <Field label={t('production.takeFrom')}>
               <WarehouseSelect value={h.input_warehouse_id} onChange={(v) => setH({ ...h, input_warehouse_id: v })} />

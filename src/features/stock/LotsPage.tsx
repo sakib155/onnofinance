@@ -118,6 +118,16 @@ export function LotsPage() {
             { key: 'item', header: t('common.item'), cell: (l) => nameOf({ name: l.item_name, name_bn: l.item_name_bn }) },
             { key: 'wh', header: t('stock.warehouse'), cell: (l) => l.warehouse_name },
             { key: 'src', header: t('stock.source'), cell: (l) => <Badge tone={sourceTone(l.source_type)}>{t(`source.${l.source_type}`)}</Badge> },
+            {
+              key: 'from',
+              header: t('stock.from'),
+              cell: (l) => (
+                <span className="text-xs">
+                  {l.supplier_name ? <span className="font-medium text-slate-700">{nameOf({ name: l.supplier_name, name_bn: l.supplier_name_bn })}</span> : null}
+                  {l.origin_no && <span className="block text-slate-500">{l.origin_no}</span>}
+                </span>
+              ),
+            },
             { key: 'in', header: t('stock.received'), align: 'right', cell: (l) => qty(l.qty_kg) },
             { key: 'left', header: t('stock.remaining'), align: 'right', cell: (l) => <span className="font-medium">{qty(l.remaining_kg)}</span> },
             { key: 'bags', header: t('unit.bags'), align: 'right', cell: (l) => qty(l.remaining_bags) },
