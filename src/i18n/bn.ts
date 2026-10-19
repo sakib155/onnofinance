@@ -390,6 +390,11 @@ export const bn: typeof en = {
     actions: { INSERT: 'তৈরি', UPDATE: 'পরিবর্তন', DELETE: 'মুছে ফেলা' },
   },
   trading: {
+    paidWithInvoice: 'এই বিলের সাথে পরিশোধ',
+    previousDue: 'আগের বাকি',
+    previousAdvance: 'আগের অগ্রিম',
+    totalDueAfter: 'এই বিলসহ মোট বাকি',
+    paidSince: 'এরপর {{paid}} পরিশোধ হয়েছে; এই বিলে এখনো {{due}} বাকি।',
     purchasesSubtitle: 'সরবরাহকারীর কাছ থেকে কেনা ধান ও চাল',
     salesSubtitle: 'ক্রেতার কাছে বেচা চাল, ধান ও উপজাত',
     newPurchase: 'নতুন ক্রয়',

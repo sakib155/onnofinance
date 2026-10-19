@@ -18,6 +18,7 @@ import { rpc, useData, useSave } from '@/lib/data'
 import { date, money, monthStart, num, qty, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { Item } from '@/lib/types'
+import type { LedgerRow } from '@/features/reports/Ledger'
 import type { Sale, SaleLine } from './SaleForm'
 
 type SaleRow = Sale & { customer_name: string; customer_name_bn: string | null; total_paid: number; due_amount: number }
@@ -128,10 +129,20 @@ function PoMeta({ s }: { s: SaleDetail }) {
 
 type DocKind = 'invoice' | 'challan'
 
-function InvoiceDoc({ s, dues, balance, createdBy }: { s: SaleDetail; dues?: { total_paid: number; due_amount: number }; balance?: number; createdBy: string }) {
+// The invoice is a snapshot of the day it was made: what was paid with it, and the customer's
+// balance just before it. Later invoices and payments don't change it (they get one line below).
+function InvoiceDoc({ s, dues, previous, createdBy }: {
+  s: SaleDetail
+  dues?: { total_paid: number; due_amount: number }
+  previous?: number
+  createdBy: string
+}) {
   const { t } = useTranslation()
   const { data: company } = useCompany()
   const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no)
+  const dueAtInvoice = num(s.total_amount) - num(s.received_amount)
+  // payments or returns against this invoice after it was made
+  const paidSince = num(dues?.total_paid) - num(s.received_amount)
   return (
     <DocPage
       title={t('trading.invoiceTitle')}
@@ -191,9 +202,17 @@ function InvoiceDoc({ s, dues, balance, createdBy }: { s: SaleDetail; dues?: { t
         {num(s.labour_charge) > 0 && <DocRow label={t('trading.labourCharge')} value={money(s.labour_charge)} />}
         {num(s.discount) > 0 && <DocRow label={t('trading.discount')} value={`- ${money(s.discount)}`} />}
         <DocRow label={t('trading.invoiceTotal')} value={money(s.total_amount)} strong />
-        <DocRow label={t('common.paid')} value={money(dues?.total_paid)} />
-        <DocRow label={t('trading.dueOnInvoice')} value={money(dues?.due_amount)} strong />
-        {balance != null && Math.abs(num(balance) - num(dues?.due_amount)) > 0.005 && <DocRow label={t('trading.customerTotalDue')} value={money(balance)} />}
+        <DocRow label={t('trading.paidWithInvoice')} value={money(s.received_amount)} />
+        <DocRow label={t('trading.dueOnInvoice')} value={money(dueAtInvoice)} strong />
+        {previous != null && Math.abs(previous) > 0.005 && (
+          <>
+            <DocRow label={previous > 0 ? t('trading.previousDue') : t('trading.previousAdvance')} value={money(Math.abs(previous))} />
+            <DocRow label={t('trading.totalDueAfter')} value={money(previous + dueAtInvoice)} strong />
+          </>
+        )}
+        {paidSince > 0.005 && (
+          <div className="pt-1 text-[11px] text-slate-500">{t('trading.paidSince', { paid: money(paidSince), due: money(dues?.due_amount) })}</div>
+        )}
       </div>
       {s.notes && <p className="mt-4 text-xs text-slate-600">{s.notes}</p>}
       {company?.invoice_footer && <p className="mt-4 text-xs text-slate-500">{company.invoice_footer}</p>}
@@ -315,15 +334,19 @@ export function SaleView() {
   const { data: dues } = useData<{ total_paid: number; due_amount: number }>(['sale-dues', id], () =>
     supabase.from('v_sale_dues').select('total_paid, due_amount').eq('id', id!).single(),
   )
-  const { data: party } = useData<{ balance: number }>(
-    ['party-bal', s?.customer_id],
-    () => supabase.from('v_party_balances').select('balance').eq('id', s!.customer_id).single(),
+  // the customer's balance just before this invoice: the ledger on the invoice date, up to this sale's entry
+  const { data: dayLedger } = useData<LedgerRow[]>(
+    ['invoice-prev', s?.customer_id, s?.sale_date, s?.id],
+    () => supabase.rpc('report_ledger', { p_account: null, p_party: s!.customer_id, p_from: s!.sale_date, p_to: s!.sale_date }),
     { enabled: Boolean(s?.customer_id) },
   )
   const createdBy = useUserName(s?.created_by)
   const del = useSave(() => rpc('delete_sale', { p_id: id }))
   if (isLoading || !s) return <Loading />
   const profit = num(s.goods_amount) - num(s.discount) - num(s.cost_amount)
+  const ledgerRows = [...(dayLedger ?? [])].sort((a, b) => a.row_no - b.row_no)
+  const at = ledgerRows.findIndex((r) => r.source_type === 'SALE' && r.source_id === s.id)
+  const previous = ledgerRows.length ? num(ledgerRows[at > 0 ? at - 1 : 0].balance) : undefined
 
   return (
     <>
@@ -374,7 +397,7 @@ export function SaleView() {
         ))}
       </div>
       <div className="overflow-x-auto" ref={ref}>
-        {kind === 'invoice' ? <InvoiceDoc s={s} dues={dues} balance={party?.balance} createdBy={createdBy} /> : <ChallanDoc s={s} createdBy={createdBy} />}
+        {kind === 'invoice' ? <InvoiceDoc s={s} dues={dues} previous={previous} createdBy={createdBy} /> : <ChallanDoc s={s} createdBy={createdBy} />}
       </div>
       <ConfirmModal
         open={deleting}

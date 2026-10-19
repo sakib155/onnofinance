@@ -388,6 +388,11 @@ export const en = {
     actions: { INSERT: 'Created', UPDATE: 'Changed', DELETE: 'Deleted' },
   },
   trading: {
+    paidWithInvoice: 'Paid with this invoice',
+    previousDue: 'Previous due',
+    previousAdvance: 'Previous advance',
+    totalDueAfter: 'Total due after this invoice',
+    paidSince: 'Since then {{paid}} has been paid; {{due}} is still due on this invoice.',
     purchasesSubtitle: 'Paddy and rice bought from suppliers',
     salesSubtitle: 'Rice, paddy and by-products sold to customers',
     newPurchase: 'New purchase',
