@@ -402,6 +402,48 @@ await as(late)
 check('blocked user sees nothing', +(await q(`select count(*) c from sales`))[0].c === 0)
 await db.exec(`reset role`); await as(admin)
 
+// Supplier yield: cheap paddy with a low yield gives dearer rice; a mixed batch is shared by kg supplied
+await db.exec(`set role authenticated`)
+const cheapCo = (await one(`insert into parties (name, types) values ('Cheap Paddy Co', '{SUPPLIER}') returning id`)).id
+const goodCo = (await one(`insert into parties (name, types) values ('Good Paddy Co', '{SUPPLIER}') returning id`)).id
+const pCheap = await rpc('save_purchase', { purchase_date: '2026-04-01', supplier_id: cheapCo, warehouse_id: wh, lines: [{ item_id: paddy, gross_kg: 1500, rate: 25 }] })
+const pGood = await rpc('save_purchase', { purchase_date: '2026-04-01', supplier_id: goodCo, warehouse_id: wh, lines: [{ item_id: paddy, gross_kg: 2500, rate: 28 }] })
+const lotCheap = (await one(`select id from lots where source_id = $1`, [pCheap])).id
+const lotGood = (await one(`select id from lots where source_id = $1`, [pGood])).id
+const dry = async (inputs, outputs, cost) => {
+  const id = await rpc('save_production_batch', { kind: 'DRYER', start_date: '2026-04-02', input_warehouse_id: wh, output_warehouse_id: wh,
+    inputs: inputs.map(([lot_id, qty_kg]) => ({ item_id: paddy, lot_id, qty_kg })) })
+  if (cost) await rpc('save_production_cost', { batch_id: id, stage: 'GENERAL', cost_date: '2026-04-02', cost_head_id: fuel, amount: cost, paid_account_id: cash })
+  await complete(id, '2026-04-03', outputs.map(([item_id, qty_kg]) => ({ item_id, qty_kg })))
+}
+await dry([[lotCheap, 1000]], [[unsorted, 550], [husk, 350]])
+await dry([[lotGood, 1000]], [[unsorted, 700], [husk, 200]])
+await dry([[lotCheap, 500], [lotGood, 1500]], [[unsorted, 1400], [husk, 400]], 2000)
+const hp = await price(husk)
+// Cheap: 1000 kg alone + a quarter of the mixed batch; Good: 1000 kg alone + three quarters
+const want1 = {
+  'Cheap Paddy Co': { kg: 1500, main: 550 + 350, by: 350 + 100, cost: 1500 * 25 + 500 - (350 + 100) * hp, batches: 2 },
+  'Good Paddy Co': { kg: 2500, main: 700 + 1050, by: 200 + 300, cost: 2500 * 28 + 1500 - (200 + 300) * hp, batches: 2 },
+}
+const sy = await q(`select * from report_supplier_yield('2026-04-01', '2026-04-30') where kind = 'DRYER'`)
+check('supplier yield lists only the period\'s dryer suppliers', sy.length === 2, JSON.stringify(sy.map((r) => r.supplier_name)))
+for (const r of sy) {
+  const w = want1[r.supplier_name]
+  check(`supplier yield for ${r.supplier_name}: kg, batches, yield, by-products and rice cost`, w && +r.material_kg === w.kg && +r.batches === w.batches && +r.mixed_batches === 1
+    && Math.abs(+r.main_kg - w.main) < 0.01 && Math.abs(+r.main_yield_pct - Math.round(10000 * w.main / w.kg) / 100) < 0.01
+    && Math.abs(+r.byproduct_kg - w.by) < 0.01 && Math.abs(+r.byproduct_value - w.by * hp) < 0.01
+    && Math.abs(+r.main_cost - w.cost) < 0.05 && Math.abs(+r.main_cost_per_kg - w.cost / w.main) < 0.001,
+    JSON.stringify({ kg: r.material_kg, main: r.main_kg, y: r.main_yield_pct, by: r.byproduct_kg, cost: r.main_cost, perKg: r.main_cost_per_kg }))
+}
+check('dearer paddy with the better yield ranks first; the cheap one is flagged', sy[0].supplier_name === 'Good Paddy Co' && +sy[0].rank === 1 && !sy[0].cheaper_but_dearer
+  && sy[1].cheaper_but_dearer && sy[1].beaten_by === 'Good Paddy Co' && +sy[1].purchase_cost_per_kg === 25 && +sy[0].purchase_cost_per_kg === 28, JSON.stringify(sy.map((r) => [r.supplier_name, r.rank, r.cheaper_but_dearer, r.beaten_by])))
+const mixedMain = (await one(`select sum(main_cost) c from v_production_batches where kind = 'DRYER' and completed_date between '2026-04-01' and '2026-04-30'`)).c
+check('suppliers\' rice cost adds up to the batches\' rice cost', Math.abs(sy.reduce((a, r) => a + +r.main_cost, 0) - +mixedMain) < 0.05, `${mixedMain}`)
+const febSort = await q(`select origin_type, supplier_name, material_kg from report_supplier_yield('2026-02-01', '2026-02-28') where kind = 'SORTER' order by material_kg desc`)
+check('sorter rows: our own dryer output and the bought unsorted rice', febSort.length === 2 && febSort[0].origin_type === 'PRODUCTION' && !febSort[0].supplier_name
+  && febSort[1].supplier_name === 'Other Mill' && +febSort[1].material_kg === 500, JSON.stringify(febSort))
+await db.exec(`reset role`)
+
 const audit = +(await one(`select count(*) c from audit_log`)).c
 check('audit log records changes', audit > 10, audit)
 

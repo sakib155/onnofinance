@@ -1,4 +1,4 @@
-import { BookOpen, Boxes, Factory, FileText, Landmark, PiggyBank, Scale, Wallet, Wheat } from 'lucide-react'
+import { BookOpen, Boxes, Factory, FileText, Landmark, PiggyBank, Scale, Trophy, Wallet, Wheat } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useCan, type Permission } from '@/app/auth'
@@ -12,6 +12,7 @@ const reports: { to: string; key: string; icon: typeof BookOpen; perm?: Permissi
   { to: '/reports/balance-sheet', key: 'balanceSheet', icon: Scale, perm: ['books'] },
   { to: '/reports/trial-balance', key: 'trialBalance', icon: BookOpen, perm: ['books'] },
   { to: '/reports/lot-profit', key: 'lotProfit', icon: Wheat, perm: ['books'] },
+  { to: '/reports/supplier-yield', key: 'supplierYield', icon: Trophy, perm: ['books'] },
   { to: '/production', key: 'batchYield', icon: Factory, perm: ['production', 'books'] },
   { to: '/stock', key: 'stockSummary', icon: Boxes },
 ]

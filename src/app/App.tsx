@@ -30,6 +30,7 @@ const CashSummaryPage = lazy(() => import('@/features/reports/FinancialReports')
 const ProfitLossPage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.ProfitLossPage })))
 const TrialBalancePage = lazy(() => import('@/features/reports/FinancialReports').then((m) => ({ default: m.TrialBalancePage })))
 const LotProfitPage = lazy(() => import('@/features/reports/LotProfitPage').then((m) => ({ default: m.LotProfitPage })))
+const SupplierYieldPage = lazy(() => import('@/features/reports/SupplierYieldPage').then((m) => ({ default: m.SupplierYieldPage })))
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
 const AuditPage = lazy(() => import('@/features/setup/AuditPage').then((m) => ({ default: m.AuditPage })))
 const CompanyPage = lazy(() => import('@/features/setup/CompanyPage').then((m) => ({ default: m.CompanyPage })))
@@ -155,6 +156,7 @@ export function App() {
                 <Route path="reports/balance-sheet" element={<Guard perm="books"><BalanceSheetPage /></Guard>} />
                 <Route path="reports/trial-balance" element={<Guard perm="books"><TrialBalancePage /></Guard>} />
                 <Route path="reports/lot-profit" element={<Guard perm="books"><LotProfitPage /></Guard>} />
+                <Route path="reports/supplier-yield" element={<Guard perm="books"><SupplierYieldPage /></Guard>} />
                 <Route path="setup/items" element={<ItemsPage />} />
                 <Route path="setup/warehouses" element={<WarehousesPage />} />
                 <Route path="setup/company" element={<Guard perm="company"><CompanyPage /></Guard>} />
