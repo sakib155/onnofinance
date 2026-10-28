@@ -141,10 +141,10 @@ export function LotPicker({ itemId, warehouseId, value, onChange }: {
 export function DateRange({ from, to, onChange }: { from: string; to: string; onChange: (from: string, to: string) => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-2">
-      <Input type="date" value={from} onChange={(e) => onChange(e.target.value, to)} className="w-40" aria-label={t('common.from')} />
+    <div className="date-range flex w-full items-center gap-2 sm:w-auto">
+      <Input type="date" value={from} onChange={(e) => onChange(e.target.value, to)} className="min-w-0 flex-1 sm:w-40 sm:flex-none" aria-label={t('common.from')} />
       <span className="text-slate-400">–</span>
-      <Input type="date" value={to} onChange={(e) => onChange(from, e.target.value)} className="w-40" aria-label={t('common.to')} />
+      <Input type="date" value={to} onChange={(e) => onChange(from, e.target.value)} className="min-w-0 flex-1 sm:w-40 sm:flex-none" aria-label={t('common.to')} />
     </div>
   )
 }

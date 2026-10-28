@@ -43,9 +43,10 @@ function LotHistory({ lot, onClose }: { lot: Lot; onClose: () => void }) {
         rows={rows}
         rowKey={(m) => String(m.id)}
         columns={[
-          { key: 'date', header: t('common.date'), cell: (m) => date(m.movement_date) },
+          { key: 'date', phone: 'sub', header: t('common.date'), cell: (m) => date(m.movement_date) },
           {
             key: 'src',
+            phone: 'title',
             header: t('stock.movement'),
             cell: (m) => {
               const link = sourceLink(m.source_type, m.source_id)
@@ -62,6 +63,7 @@ function LotHistory({ lot, onClose }: { lot: Lot; onClose: () => void }) {
           { key: 'out', header: t('stock.out'), align: 'right', cell: (m) => (m.qty_kg < 0 ? qty(-m.qty_kg) : '') },
           {
             key: 'bal',
+            phone: 'value',
             header: t('common.balance'),
             align: 'right',
             cell: (m) => qty(m.balance),
@@ -113,9 +115,9 @@ export function LotsPage() {
           rowKey={(l) => l.id}
           onRowClick={setViewing}
           columns={[
-            { key: 'lot', header: t('stock.lot'), cell: (l) => <span className="font-medium">{l.lot_no}</span> },
-            { key: 'date', header: t('common.date'), cell: (l) => date(l.received_date) },
-            { key: 'item', header: t('common.item'), cell: (l) => nameOf({ name: l.item_name, name_bn: l.item_name_bn }) },
+            { key: 'lot', phone: 'sub', header: t('stock.lot'), cell: (l) => <span className="font-medium whitespace-nowrap">{l.lot_no}</span> },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (l) => date(l.received_date) },
+            { key: 'item', phone: 'title', header: t('common.item'), cell: (l) => nameOf({ name: l.item_name, name_bn: l.item_name_bn }) },
             { key: 'wh', header: t('stock.warehouse'), cell: (l) => l.warehouse_name },
             { key: 'src', header: t('stock.source'), cell: (l) => <Badge tone={sourceTone(l.source_type)}>{t(`source.${l.source_type}`)}</Badge> },
             {
@@ -129,7 +131,7 @@ export function LotsPage() {
               ),
             },
             { key: 'in', header: t('stock.received'), align: 'right', cell: (l) => qty(l.qty_kg) },
-            { key: 'left', header: t('stock.remaining'), align: 'right', cell: (l) => <span className="font-medium">{qty(l.remaining_kg)}</span> },
+            { key: 'left', phone: 'value', header: t('stock.remaining'), align: 'right', cell: (l) => <span className="font-medium">{qty(l.remaining_kg)}</span> },
             { key: 'bags', header: t('unit.bags'), align: 'right', cell: (l) => qty(l.remaining_bags) },
             ...(can('books') ? [{ key: 'cost', header: t('trading.costPerKg'), align: 'right' as const, cell: (l: Lot) => money(l.unit_cost) }] : []),
           ]}

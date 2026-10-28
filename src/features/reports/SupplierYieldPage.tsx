@@ -1,9 +1,10 @@
+import clsx from 'clsx'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DateRange, nameOf, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Select } from '@/components/ui/form'
-import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
 import { date, money, num, qty, today, yearStart } from '@/lib/format'
@@ -74,7 +75,7 @@ export function SupplierYieldPage() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className={clsx(statGrid, 'mb-4 sm:grid-cols-4')}>
         <Stat label={t('reports.sySupplied', { material: t(`category.${kind === 'DRYER' ? 'PADDY' : 'UNSORTED'}`) })} value={qty(materialKg)} hint={t('unit.kg')} />
         <Stat label={t('reports.syMade', { product: t(`category.${mainCat}`) })} value={qty(mainKg)} hint={t('unit.kg')} />
         <Stat label={t('reports.syYield')} value={materialKg > 0 ? `${qty((100 * mainKg) / materialKg)}%` : '–'} />
@@ -88,9 +89,10 @@ export function SupplierYieldPage() {
           rowClassName={(r) => (r.cheaper_but_dearer ? 'bg-amber-50' : undefined)}
           empty={t('reports.syEmpty')}
           columns={[
-            { key: 'rank', header: '#', cell: (r) => <span className="font-semibold tabular-nums text-slate-500">{r.rank}</span> },
+            { key: 'rank', phone: 'hide', header: '#', cell: (r) => <span className="font-semibold tabular-nums text-slate-500">{r.rank}</span> },
             {
               key: 'who',
+              phone: 'title',
               header: t('trading.supplier'),
               cell: (r) => (
                 <div>
@@ -137,6 +139,7 @@ export function SupplierYieldPage() {
             },
             {
               key: 'main',
+              phone: 'value',
               header: t(`reports.syMainCost.${kind}`),
               align: 'right',
               cell: (r) => (

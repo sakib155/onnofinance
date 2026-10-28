@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCompany } from '@/features/setup/company'
 import { useData } from '@/lib/data'
@@ -32,6 +32,27 @@ function CompanyHeader() {
   )
 }
 
+// How much an A4 page has to shrink to fit the width it is shown in (1 when it fits).
+// Printing and PDFs always use the full size (see .doc-page in index.css).
+function useFitZoom(ref: RefObject<HTMLElement | null>) {
+  const [zoom, setZoom] = useState(1)
+  useEffect(() => {
+    const box = ref.current?.parentElement
+    if (!box) return
+    const fit = () => {
+      const s = getComputedStyle(box)
+      const room = box.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+      // a box that is hidden or not laid out yet has no width; leave the page at full size then
+      setZoom(room > 0 ? Math.min(1, room / A4.width) : 1)
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [ref])
+  return zoom
+}
+
 // One A4 page. The footer is pushed to the bottom of the page however short the content is.
 export function DocPage({ title, meta, children, footer, page, compactHeader }: {
   title: ReactNode
@@ -42,10 +63,13 @@ export function DocPage({ title, meta, children, footer, page, compactHeader }: 
   compactHeader?: boolean
 }) {
   const { t } = useTranslation()
+  const ref = useRef<HTMLDivElement>(null)
+  const zoom = useFitZoom(ref)
   return (
     <div
+      ref={ref}
       className="doc-page print-area mx-auto flex flex-col bg-white p-10 text-[13px] text-slate-800 shadow-sm print:shadow-none"
-      style={{ width: A4.width, minHeight: A4.height }}
+      style={{ width: A4.width, minHeight: A4.height, zoom: zoom < 0.999 ? zoom : undefined }}
     >
       {!compactHeader && <CompanyHeader />}
       <div className={clsx('mb-4 flex items-start justify-between gap-4', compactHeader && 'border-b border-slate-300 pb-2')}>

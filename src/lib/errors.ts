@@ -22,6 +22,7 @@ const FIELDS: Record<string, string> = {
 const DB_MESSAGES: [RegExp, string, string[]?][] = [
   [/^You do not have permission for this action$/, 'permission'],
   [/^Add at least one item$/, 'addItem'],
+  [/^The finish time is before the start time$/, 'finishBeforeStart'],
   [/^Line (\d+): choose an item$/, 'lineItem', ['line']],
   [/^Line (\d+): enter the number of bags for a per-bag rate$/, 'lineBags', ['line']],
   [/^Line (\d+): enter the ordered weight$/, 'lineOrderedWeight', ['line']],

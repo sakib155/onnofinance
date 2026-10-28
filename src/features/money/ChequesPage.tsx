@@ -47,6 +47,7 @@ export function ChequesPage() {
           columns={[
             {
               key: 'cdate',
+              phone: 'sub',
               header: t('money.chequeDate'),
               cell: (r) => (
                 <span className={r.cheque_status === 'PENDING' && r.cheque_date && r.cheque_date <= today() ? 'font-medium text-amber-700' : ''}>
@@ -54,7 +55,7 @@ export function ChequesPage() {
                 </span>
               ),
             },
-            { key: 'no', header: t('money.chequeNo'), cell: (r) => r.cheque_no },
+            { key: 'no', phone: 'sub', header: t('money.chequeNo'), cell: (r) => r.cheque_no },
             {
               key: 'dir',
               header: t('money.kind'),
@@ -62,6 +63,7 @@ export function ChequesPage() {
             },
             {
               key: 'party',
+              phone: 'title',
               header: t('common.party'),
               cell: (r) => (
                 <Link to={`/money/${r.id}`} className="text-brand-800 hover:underline">
@@ -72,6 +74,7 @@ export function ChequesPage() {
             { key: 'acct', header: t('common.account'), cell: (r) => r.money_account_name },
             {
               key: 'amt',
+              phone: 'value',
               header: t('common.amount'),
               align: 'right',
               cell: (r) => money(r.amount),

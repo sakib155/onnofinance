@@ -8,7 +8,7 @@ import { DocPage, DocRow, SignatureFooter, td, th, useUserName } from '@/compone
 import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Input } from '@/components/ui/form'
-import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Pending } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
@@ -71,10 +71,10 @@ export function PurchasesPage() {
           rowKey={(p) => p.id}
           onRowClick={(p) => navigate(`/purchases/${p.id}`)}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (p) => date(p.purchase_date), className: 'whitespace-nowrap' },
-            { key: 'no', header: t('common.billNo'), cell: (p) => <span className="font-medium">{p.purchase_no}</span> },
-            { key: 'sup', header: t('trading.supplier'), cell: (p) => nameOf({ name: p.supplier_name, name_bn: p.supplier_name_bn }) },
-            { key: 'bill', header: t('trading.supplierBill'), align: 'right', cell: (p) => money(p.supplier_total), footer: money(rows.reduce((s, p) => s + num(p.supplier_total), 0)) },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (p) => date(p.purchase_date), className: 'whitespace-nowrap' },
+            { key: 'no', phone: 'sub', header: t('common.billNo'), cell: (p) => <span className="font-medium whitespace-nowrap">{p.purchase_no}</span> },
+            { key: 'sup', phone: 'title', header: t('trading.supplier'), cell: (p) => nameOf({ name: p.supplier_name, name_bn: p.supplier_name_bn }) },
+            { key: 'bill', phone: 'value', header: t('trading.supplierBill'), align: 'right', cell: (p) => money(p.supplier_total), footer: money(rows.reduce((s, p) => s + num(p.supplier_total), 0)) },
             {
               key: 'due',
               header: t('common.due'),
@@ -105,7 +105,7 @@ export function PurchaseView() {
   const toast = useToast()
   const navigate = useNavigate()
   const [deleting, setDeleting] = useState(false)
-  const { data: p, isLoading } = useData<PurchaseDetail>(['purchase-view', id], () =>
+  const { data: p, error } = useData<PurchaseDetail>(['purchase-view', id], () =>
     supabase
       .from('purchases')
       .select(
@@ -120,7 +120,7 @@ export function PurchaseView() {
   const createdBy = useUserName(p?.created_by)
   const ref = useRef<HTMLDivElement>(null)
   const del = useSave(() => rpc('delete_purchase', { p_id: id }))
-  if (isLoading || !p) return <Loading />
+  if (!p) return <Pending error={error} />
   const lines = [...p.lines].sort((a, b) => a.line_no - b.line_no)
   const extras = num(p.transport_cost) + num(p.labour_cost) + num(p.other_cost)
 

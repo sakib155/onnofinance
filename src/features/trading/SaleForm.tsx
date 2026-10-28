@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AccountSelect, isMoneyAccount, PartyPicker, WarehouseSelect } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select, Textarea } from '@/components/ui/form'
+import { Field, Input, MoreFields, Select, Textarea } from '@/components/ui/form'
 import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { useToast } from '@/components/ui/toast'
@@ -262,45 +262,52 @@ function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
             <Field label={t('trading.deliverFrom')}>
               <WarehouseSelect value={h.warehouse_id} onChange={set('warehouse_id')} />
             </Field>
-            <Field label={t('trading.vehicleNo')}>
-              <Input value={h.vehicle_no} onChange={(e) => set('vehicle_no')(e.target.value)} />
-            </Field>
-            <Field label={t('trading.driver')}>
-              <Input value={h.driver_name} onChange={(e) => set('driver_name')(e.target.value)} />
-            </Field>
-            <Field label={t('trading.driverPhone')}>
-              <Input value={h.driver_phone} onChange={(e) => set('driver_phone')(e.target.value)} />
-            </Field>
-            <Field label={t('trading.broker')}>
-              <PartyPicker value={h.broker_id} onChange={set('broker_id')} type="BROKER" clearable placeholder={t('common.none')} />
-            </Field>
+            <MoreFields label={t('trading.moreDelivery')} filled={Boolean(h.vehicle_no || h.driver_name || h.driver_phone || h.broker_id)}>
+              <Field label={t('trading.vehicleNo')}>
+                <Input value={h.vehicle_no} onChange={(e) => set('vehicle_no')(e.target.value)} />
+              </Field>
+              <Field label={t('trading.driver')}>
+                <Input value={h.driver_name} onChange={(e) => set('driver_name')(e.target.value)} />
+              </Field>
+              <Field label={t('trading.driverPhone')}>
+                <Input value={h.driver_phone} onChange={(e) => set('driver_phone')(e.target.value)} />
+              </Field>
+              <Field label={t('trading.broker')}>
+                <PartyPicker value={h.broker_id} onChange={set('broker_id')} type="BROKER" clearable placeholder={t('common.none')} />
+              </Field>
+            </MoreFields>
           </div>
-          <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label={t('orders.againstOrder')} className="lg:col-span-2" hint={h.customer_id && !orderOptions.length && !h.order_id ? t('orders.noOpenOrders') : undefined}>
-              <div className="flex gap-2">
-                <Select className="flex-1" value={h.order_id} onChange={(e) => pickOrder(e.target.value)} disabled={!h.customer_id}>
-                  <option value="">{t('orders.noOrder')}</option>
-                  {linkedMissing && <option value={h.order_id}>{t('orders.linkedOrder')}</option>}
-                  {orderOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {[o.order_no, o.po_number && `PO ${o.po_number}`, `${t('orders.remaining')} ${kg(o.remaining_kg)}`].filter(Boolean).join(' · ')}
-                    </option>
-                  ))}
-                </Select>
-                {h.order_id && selectedOrderLines && remainingLines(selectedOrderLines).length > 0 && (
-                  <Button variant="secondary" onClick={() => setLines(remainingLines(selectedOrderLines))} title={t('orders.fillRemainingHint')}>
-                    <ClipboardList className="size-4" />
-                    {t('orders.fillRemaining')}
-                  </Button>
-                )}
+          {/* shown by itself when this customer has open orders */}
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <MoreFields label={t('orders.morePo')} filled={Boolean(orderOptions.length || h.order_id || h.po_number || h.po_date)}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label={t('orders.againstOrder')} className="lg:col-span-2" hint={h.customer_id && !orderOptions.length && !h.order_id ? t('orders.noOpenOrders') : undefined}>
+                  <div className="flex gap-2">
+                    <Select className="flex-1" value={h.order_id} onChange={(e) => pickOrder(e.target.value)} disabled={!h.customer_id}>
+                      <option value="">{t('orders.noOrder')}</option>
+                      {linkedMissing && <option value={h.order_id}>{t('orders.linkedOrder')}</option>}
+                      {orderOptions.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {[o.order_no, o.po_number && `PO ${o.po_number}`, `${t('orders.remaining')} ${kg(o.remaining_kg)}`].filter(Boolean).join(' · ')}
+                        </option>
+                      ))}
+                    </Select>
+                    {h.order_id && selectedOrderLines && remainingLines(selectedOrderLines).length > 0 && (
+                      <Button variant="secondary" onClick={() => setLines(remainingLines(selectedOrderLines))} title={t('orders.fillRemainingHint')}>
+                        <ClipboardList className="size-4" />
+                        {t('orders.fillRemaining')}
+                      </Button>
+                    )}
+                  </div>
+                </Field>
+                <Field label={t('orders.poNumber')} hint={h.order_id ? t('orders.poFromOrder') : t('orders.poHint')}>
+                  <Input value={h.po_number} onChange={(e) => set('po_number')(e.target.value)} disabled={Boolean(h.order_id)} />
+                </Field>
+                <Field label={t('orders.poDate')}>
+                  <Input type="date" value={h.po_date} onChange={(e) => set('po_date')(e.target.value)} disabled={Boolean(h.order_id)} />
+                </Field>
               </div>
-            </Field>
-            <Field label={t('orders.poNumber')} hint={h.order_id ? t('orders.poFromOrder') : t('orders.poHint')}>
-              <Input value={h.po_number} onChange={(e) => set('po_number')(e.target.value)} disabled={Boolean(h.order_id)} />
-            </Field>
-            <Field label={t('orders.poDate')}>
-              <Input type="date" value={h.po_date} onChange={(e) => set('po_date')(e.target.value)} disabled={Boolean(h.order_id)} />
-            </Field>
+            </MoreFields>
           </div>
         </Card>
 
@@ -327,18 +334,6 @@ function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title={t('trading.chargesAndPayment')}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t('trading.transportCharge')}>
-                <Input type="number" min="0" step="0.01" value={h.transport_charge} onChange={(e) => set('transport_charge')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.labourCharge')}>
-                <Input type="number" min="0" step="0.01" value={h.labour_charge} onChange={(e) => set('labour_charge')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.discount')}>
-                <Input type="number" min="0" step="0.01" value={h.discount} onChange={(e) => set('discount')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.commission')} hint={h.broker_id ? undefined : t('trading.commissionNeedsBroker')}>
-                <Input type="number" min="0" step="0.01" value={h.commission_amount} onChange={(e) => set('commission_amount')(e.target.value)} />
-              </Field>
               <Field label={t('trading.receivedNow')}>
                 <Input type="number" min="0" step="0.01" value={h.received_amount} onChange={(e) => set('received_amount')(e.target.value)} />
               </Field>
@@ -370,12 +365,29 @@ function SaleEditor({ id, existing: s, fromOrder, defaultWarehouse }: {
                   )}
                 </>
               )}
-              <Field label={t('common.reference')}>
-                <Input value={h.reference} onChange={(e) => set('reference')(e.target.value)} />
-              </Field>
-              <Field label={t('common.notes')} className="sm:col-span-2">
-                <Textarea value={h.notes} onChange={(e) => set('notes')(e.target.value)} />
-              </Field>
+              <MoreFields
+                label={t('trading.moreSaleCharges')}
+                filled={Boolean(num(h.transport_charge) || num(h.labour_charge) || num(h.discount) || num(h.commission_amount) || h.reference || h.notes)}
+              >
+                <Field label={t('trading.transportCharge')}>
+                  <Input type="number" min="0" step="0.01" value={h.transport_charge} onChange={(e) => set('transport_charge')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.labourCharge')}>
+                  <Input type="number" min="0" step="0.01" value={h.labour_charge} onChange={(e) => set('labour_charge')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.discount')}>
+                  <Input type="number" min="0" step="0.01" value={h.discount} onChange={(e) => set('discount')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.commission')} hint={h.broker_id ? undefined : t('trading.commissionNeedsBroker')}>
+                  <Input type="number" min="0" step="0.01" value={h.commission_amount} onChange={(e) => set('commission_amount')(e.target.value)} />
+                </Field>
+                <Field label={t('common.reference')}>
+                  <Input value={h.reference} onChange={(e) => set('reference')(e.target.value)} />
+                </Field>
+                <Field label={t('common.notes')} className="sm:col-span-2">
+                  <Textarea value={h.notes} onChange={(e) => set('notes')(e.target.value)} />
+                </Field>
+              </MoreFields>
             </div>
           </Card>
           <Card title={t('common.summary')}>

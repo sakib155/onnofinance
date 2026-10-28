@@ -200,9 +200,10 @@ export function AccountsPage() {
                   onRowClick={can('books') ? (a) => navigate(`/accounts/${a.id}`) : undefined}
                   rowClassName={(a) => (a.is_active ? undefined : 'opacity-50')}
                   columns={[
-                    { key: 'code', header: t('common.code'), cell: (a) => <span className="text-slate-500">{a.code}</span>, className: 'w-20' },
+                    { key: 'code', phone: 'sub', header: t('common.code'), cell: (a) => <span className="text-slate-500">{a.code}</span>, className: 'w-20' },
                     {
                       key: 'name',
+                      phone: 'title',
                       header: t('common.name'),
                       cell: (a) => (
                         <div>
@@ -212,7 +213,7 @@ export function AccountsPage() {
                       ),
                     },
                     { key: 'kind', header: '', cell: (a) => (a.is_system ? <Badge>{t('accounts.system')}</Badge> : null) },
-                    { key: 'bal', header: t('common.balance'), align: 'right', cell: (a) => (can('books') ? <Money value={naturalBalance(a)} colored /> : '') },
+                    { key: 'bal', phone: 'value', header: t('common.balance'), align: 'right', cell: (a) => (can('books') ? <Money value={naturalBalance(a)} colored /> : '') },
                     {
                       key: 'edit',
                       header: '',

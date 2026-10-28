@@ -76,6 +76,7 @@ export function PartiesPage() {
           columns={[
             {
               key: 'name',
+              phone: 'title',
               header: t('common.name'),
               cell: (p) => (
                 <div>
@@ -86,6 +87,7 @@ export function PartiesPage() {
             },
             {
               key: 'types',
+              phone: 'sub',
               header: t('parties.types'),
               cell: (p) => (
                 <div className="flex flex-wrap gap-1">
@@ -97,6 +99,7 @@ export function PartiesPage() {
             },
             {
               key: 'balance',
+              phone: 'value',
               header: t('common.balance'),
               align: 'right',
               cell: (p) => <Balance value={p.balance} />,
@@ -113,6 +116,7 @@ export function PartiesPage() {
             },
             {
               key: 'edit',
+              phone: 'hide',
               header: '',
               align: 'right',
               cell: (p) =>

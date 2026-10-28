@@ -1,5 +1,6 @@
 import clsx from 'clsx'
-import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { Plus } from 'lucide-react'
+import { forwardRef, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
 const control =
   'w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:bg-slate-100 disabled:text-slate-500'
@@ -58,5 +59,23 @@ export function Checkbox({ label, ...rest }: InputHTMLAttributes<HTMLInputElemen
       <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-700" {...rest} />
       {label}
     </label>
+  )
+}
+
+// Optional fields folded behind one line until needed; they open by themselves once one has a value
+// and then stay open.
+export function MoreFields({ label, filled, children }: { label: ReactNode; filled?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  if (filled && !open) setOpen(true)
+  if (open || filled) return <>{children}</>
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="col-span-full flex items-center gap-1.5 justify-self-start text-left text-sm font-medium text-brand-700 hover:text-brand-800"
+    >
+      <Plus className="size-4 shrink-0" />
+      {label}
+    </button>
   )
 }

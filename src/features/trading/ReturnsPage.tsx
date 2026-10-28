@@ -189,13 +189,13 @@ export function ReturnsPage() {
           rows={data}
           rowKey={(r) => r.id}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (r) => date(r.return_date) },
-            { key: 'no', header: t('common.voucherNo'), cell: (r) => <span className="font-medium">{r.return_no}</span> },
-            { key: 'party', header: t('common.party'), cell: (r) => nameOf(r.party) },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (r) => date(r.return_date) },
+            { key: 'no', phone: 'sub', header: t('common.voucherNo'), cell: (r) => <span className="font-medium whitespace-nowrap">{r.return_no}</span> },
+            { key: 'party', phone: 'title', header: t('common.party'), cell: (r) => nameOf(r.party) },
             { key: 'doc', header: t('returns.against'), cell: (r) => r.doc?.no ?? '—' },
             { key: 'item', header: t('common.item'), cell: (r) => nameOf(r.item) },
             { key: 'qty', header: t('trading.weightKg'), align: 'right', cell: (r) => qty(r.qty_kg) },
-            { key: 'amt', header: t('common.amount'), align: 'right', cell: (r) => money(r.amount) },
+            { key: 'amt', phone: 'value', header: t('common.amount'), align: 'right', cell: (r) => money(r.amount) },
             { key: 'why', header: t('returns.reason'), cell: (r) => <span className="text-xs text-slate-500">{r.reason}</span> },
             {
               key: 'del',

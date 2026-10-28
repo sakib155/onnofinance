@@ -25,9 +25,10 @@ export function Card({ title, actions, children, className, padded = true }: {
   return (
     <section className={clsx('rounded-xl border border-slate-200 bg-white shadow-sm', className)}>
       {(title || actions) && (
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-          {actions && <div className="no-print flex items-center gap-2">{actions}</div>}
+          {/* on a phone a date filter in the header takes a row of its own */}
+          {actions && <div className="no-print flex min-w-0 flex-wrap items-center gap-2 max-sm:has-[.date-range]:w-full">{actions}</div>}
         </div>
       )}
       <div className={clsx(padded && 'p-4')}>{children}</div>
@@ -49,11 +50,14 @@ export function Badge({ tone = 'slate', children }: { tone?: Tone; children: Rea
   return <span className={clsx('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap', tones[tone])}>{children}</span>
 }
 
+// Grid for Stat tiles: two to a row on a phone, a lone last tile takes the whole row
+export const statGrid = 'grid grid-cols-2 gap-3 [&>*]:min-w-0 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2'
+
 export function Stat({ label, value, hint, tone }: { label: ReactNode; value: ReactNode; hint?: ReactNode; tone?: 'up' | 'down' }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={clsx('mt-1 text-xl font-semibold tabular-nums', tone === 'down' ? 'text-red-600' : 'text-slate-900')}>{value}</div>
+      <div className={clsx('mt-1 text-lg font-semibold break-words tabular-nums sm:text-xl', tone === 'down' ? 'text-red-600' : 'text-slate-900')}>{value}</div>
       {hint && <div className="mt-0.5 text-xs text-slate-500">{hint}</div>}
     </div>
   )
@@ -67,6 +71,23 @@ export function Loading() {
   return (
     <div className="flex justify-center py-16">
       <Spinner />
+    </div>
+  )
+}
+
+// Until a record arrives: the spinner, or, if it could not be loaded, why, with a way back
+export function Pending({ error }: { error?: unknown }) {
+  const { t } = useTranslation()
+  if (!error) return <Loading />
+  // a link to a deleted record (no row), or a mistyped one (not an id)
+  const code = (error as { code?: string }).code
+  const gone = code === 'PGRST116' || code === '22P02'
+  return (
+    <div className="mx-auto max-w-md space-y-4 py-12 text-center">
+      <ErrorBox error={gone ? t('errors.notFound') : error} />
+      <button className="text-sm font-medium text-brand-700 hover:text-brand-800" onClick={() => window.history.back()}>
+        {t('common.back')}
+      </button>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { ArrowLeft, CheckCircle2, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,9 +7,9 @@ import { useCan } from '@/app/auth'
 import { AccountSelect, isExpenseHead, isMoneyAccount, ItemPicker, nameOf, PartyPicker } from '@/components/common'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/form'
-import { Badge, Card, ErrorBox, Loading, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, ErrorBox, PageHeader, Pending, Stat, statGrid } from '@/components/ui/layout'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
-import { Table } from '@/components/ui/table'
+import { Table, type Column } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { rpc, useData, useItems, useSave } from '@/lib/data'
 import { date, dateTime, duration, fromLocalInput, kg, localDateTime, minutesBetween, money, num, qty, today } from '@/lib/format'
@@ -277,7 +278,7 @@ export function BatchView() {
   const [completing, setCompleting] = useState(false)
   const [confirm, setConfirm] = useState<'delete' | 'reopen' | null>(null)
   const { data: items } = useItems()
-  const { data: b, isLoading } = useData<Detail>(['batch', id], async () => {
+  const { data: b, error } = useData<Detail>(['batch', id], async () => {
     const [batch, rest] = await Promise.all([
       supabase.from('v_production_batches').select('*').eq('id', id!).single(),
       supabase
@@ -298,7 +299,7 @@ export function BatchView() {
   const delBatch = useSave(() => rpc('delete_production_batch', { p_id: id }))
   const reopen = useSave(() => rpc('reopen_production_batch', { p_id: id }))
 
-  if (isLoading || !b) return <Loading />
+  if (!b) return <Pending error={error} />
   const open = b.status === 'RUNNING'
   const costTotal = b.costs.reduce((s, c) => s + num(c.amount), 0)
   const materials = b.inputs.filter((i) => i.purpose !== 'CONSUMABLE')
@@ -307,8 +308,8 @@ export function BatchView() {
   const err = (e: unknown) => toast(errorMessage(e), 'error')
   const bn = i18n.language === 'bn'
   const minutes = b.status === 'COMPLETED' ? b.minutes_taken : open ? minutesBetween(b.started_at, now) : null
-  const inputColumns = [
-    { key: 'item', header: t('common.item'), cell: (i: BatchInput) => nameOf(i.item) },
+  const inputColumns: Column<BatchInput>[] = [
+    { key: 'item', phone: 'title', header: t('common.item'), cell: (i: BatchInput) => nameOf(i.item) },
     {
       key: 'lot',
       header: t('production.lotsAndSuppliers'),
@@ -329,7 +330,7 @@ export function BatchView() {
       },
     },
     { key: 'bags', header: t('unit.bags'), align: 'right' as const, cell: (i: BatchInput) => (num(i.bags) ? qty(i.bags) : '') },
-    { key: 'kg', header: t('unit.kg'), align: 'right' as const, cell: (i: BatchInput) => qty(i.qty_kg) },
+    { key: 'kg', phone: 'value', header: t('unit.kg'), align: 'right' as const, cell: (i: BatchInput) => qty(i.qty_kg) },
     ...(showCost ? [{ key: 'cost', header: t('production.cost'), align: 'right' as const, cell: (i: BatchInput) => money(i.cost) }] : []),
   ]
 
@@ -381,7 +382,7 @@ export function BatchView() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={clsx(statGrid, 'mb-4 lg:grid-cols-4')}>
         <Stat label={t(`production.materialIn.${b.kind}`)} value={kg(b.input_kg)} hint={showCost ? money(b.material_cost) : undefined} />
         <Stat
           label={t('production.otherCosts')}
@@ -429,9 +430,10 @@ export function BatchView() {
             rowKey={(c) => c.id}
             empty={t('production.noCosts')}
             columns={[
-              { key: 'date', header: t('common.date'), cell: (c) => date(c.cost_date) },
+              { key: 'date', phone: 'sub', header: t('common.date'), cell: (c) => date(c.cost_date) },
               {
                 key: 'head',
+                phone: 'title',
                 header: t('production.costHead'),
                 cell: (c) => (
                   <div>
@@ -443,7 +445,7 @@ export function BatchView() {
                   </div>
                 ),
               },
-              { key: 'amt', header: t('common.amount'), align: 'right', cell: (c) => money(c.amount), footer: money(costTotal) },
+              { key: 'amt', phone: 'value', header: t('common.amount'), align: 'right', cell: (c) => money(c.amount), footer: money(costTotal) },
               {
                 key: 'del',
                 header: '',
@@ -469,6 +471,7 @@ export function BatchView() {
             columns={[
               {
                 key: 'item',
+                phone: 'title',
                 header: t('common.item'),
                 cell: (o) => (
                   <div>
@@ -478,7 +481,7 @@ export function BatchView() {
               },
               { key: 'lot', header: t('stock.lot'), cell: (o) => <span className="text-xs text-slate-500">{o.lot?.lot_no}</span> },
               { key: 'bags', header: t('unit.bags'), align: 'right', cell: (o) => (num(o.bags) ? `${qty(o.bags)} × ${qty(o.bag_size_kg)}` : '') },
-              { key: 'kg', header: t('unit.kg'), align: 'right', cell: (o) => qty(o.qty_kg), footer: qty(b.output_kg) },
+              { key: 'kg', phone: 'value', header: t('unit.kg'), align: 'right', cell: (o) => qty(o.qty_kg), footer: qty(b.output_kg) },
               {
                 key: 'pct',
                 header: t(`production.ofMaterial.${b.kind}`),

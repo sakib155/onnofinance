@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { nameOf, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
-import { Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
 import { money, num, today } from '@/lib/format'
@@ -47,7 +47,7 @@ export function DuesPage() {
           </button>
         ))}
       </div>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className={clsx(statGrid, 'mb-4 lg:grid-cols-5')}>
         <Stat label={t('common.total')} value={money(total)} hint={t('dues.parties', { count: rows.length })} />
         {BUCKETS.map((b) => (
           <Stat key={b} label={t(`dues.${b}`)} value={money(bucketTotal(b))} tone={b === 'b90' && bucketTotal(b) > 0 ? 'down' : undefined} />
@@ -61,6 +61,7 @@ export function DuesPage() {
           columns={[
             {
               key: 'name',
+              phone: 'title',
               header: t('common.party'),
               cell: (r) => (
                 <Link to={`/parties/${r.party_id}`} className="font-medium text-brand-800 hover:underline">
@@ -68,7 +69,7 @@ export function DuesPage() {
                 </Link>
               ),
             },
-            { key: 'phone', header: t('common.phone'), cell: (r) => <span className="text-slate-500">{r.phone}</span> },
+            { key: 'phone', phone: 'sub', header: t('common.phone'), cell: (r) => <span className="text-slate-500">{r.phone}</span> },
             ...BUCKETS.map((b) => ({
               key: b,
               header: t(`dues.${b}`),
@@ -78,6 +79,7 @@ export function DuesPage() {
             })),
             {
               key: 'total',
+              phone: 'value',
               header: t('dues.balance'),
               align: 'right',
               cell: (r) => {

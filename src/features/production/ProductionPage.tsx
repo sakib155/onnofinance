@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCan } from '@/app/auth'
 import { ButtonLink } from '@/components/ui/button'
 import { Select } from '@/components/ui/form'
-import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
 import { date, dateTime, duration, kg, minutesBetween, money, num, qty } from '@/lib/format'
@@ -69,7 +69,7 @@ export function ProductionPage() {
           </button>
         ))}
       </div>
-      <div className={clsx('mb-4 grid gap-3 sm:grid-cols-2', showCost ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
+      <div className={clsx(statGrid, 'mb-4', showCost ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
         <Stat label={t('production.running')} value={running.length} hint={kg(running.reduce((s, b) => s + num(b.input_kg), 0))} />
         <Stat label={t('production.completed')} value={done.length} hint={kg(done.reduce((s, b) => s + num(b.main_kg), 0))} />
         <Stat label={t('production.avgTime')} value={avgMinutes != null ? duration(avgMinutes) : '—'} hint={t(`production.avgTimeHint.${kind}`)} />
@@ -91,8 +91,8 @@ export function ProductionPage() {
           onRowClick={(b) => navigate(`/production/${b.id}`)}
           empty={t(`production.noneYet.${kind}`)}
           columns={[
-            { key: 'no', header: t('production.batch'), cell: (b) => <span className="font-medium">{b.batch_no}</span> },
-            { key: 'start', header: t('production.inputAt'), cell: (b) => (b.started_at ? dateTime(b.started_at) : date(b.start_date)), className: 'whitespace-nowrap' },
+            { key: 'no', phone: 'title', header: t('production.batch'), cell: (b) => <span className="font-medium whitespace-nowrap">{b.batch_no}</span> },
+            { key: 'start', phone: 'sub', header: t('production.inputAt'), cell: (b) => (b.started_at ? dateTime(b.started_at) : date(b.start_date)), className: 'whitespace-nowrap' },
             {
               key: 'time',
               header: t('production.timeTaken'),
@@ -106,11 +106,11 @@ export function ProductionPage() {
                   ''
                 ),
             },
-            { key: 'status', header: t('common.status'), cell: (b) => <Badge tone={statusTone(b.status)}>{t(`production.status.${b.status}`)}</Badge> },
+            { key: 'status', phone: 'sub', header: t('common.status'), cell: (b) => <Badge tone={statusTone(b.status)}>{t(`production.status.${b.status}`)}</Badge> },
             { key: 'in', header: t(`production.materialIn.${kind}`), align: 'right', cell: (b) => qty(b.input_kg) },
             { key: 'out', header: t(`production.mainOut.${kind}`), align: 'right', cell: (b) => (num(b.main_kg) ? qty(b.main_kg) : '') },
             { key: 'by', header: t('production.byproducts'), align: 'right', cell: (b) => (num(b.byproduct_kg) ? qty(b.byproduct_kg) : '') },
-            { key: 'yield', header: t('production.yield'), align: 'right', cell: (b) => (b.main_yield_pct != null ? `${qty(b.main_yield_pct)}%` : '') },
+            { key: 'yield', phone: 'value', header: t('production.yield'), align: 'right', cell: (b) => (b.main_yield_pct != null ? `${qty(b.main_yield_pct)}%` : '') },
             ...(showCost
               ? [
                   { key: 'cost', header: t('production.totalCost'), align: 'right' as const, cell: (b: Batch) => money(b.total_cost) },

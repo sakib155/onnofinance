@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { AlertTriangle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,7 @@ import { useCan } from '@/app/auth'
 import { nameOf, PrintButton, WarehouseSelect } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Select } from '@/components/ui/form'
-import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
 import { kg, money, num, qty } from '@/lib/format'
@@ -66,7 +67,7 @@ export function StockPage() {
     <>
       <PrintHeader title={t('nav.stockSummary')} />
       <PageHeader title={t('nav.stockSummary')} subtitle={t('stock.subtitle')} actions={<PrintButton />} />
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className={clsx(statGrid, 'mb-4 lg:grid-cols-5')}>
         <Stat label={t('category.PADDY')} value={kg(byCat('PADDY'))} />
         <Stat label={t('category.UNSORTED')} value={kg(byCat('UNSORTED'))} />
         <Stat label={t('category.RICE')} value={kg(byCat('RICE'))} />
@@ -102,6 +103,7 @@ export function StockPage() {
           columns={[
             {
               key: 'item',
+              phone: 'title',
               header: t('common.item'),
               cell: (r) => (
                 <div className="flex items-center gap-2">
@@ -120,7 +122,7 @@ export function StockPage() {
               ? [{ key: 'wh', header: t('stock.warehouse'), cell: (r: StockRow) => nameOf({ name: r.warehouse_name, name_bn: r.warehouse_name_bn }) }]
               : []),
             { key: 'bags', header: t('unit.bags'), align: 'right', cell: (r) => qty(r.bags) },
-            { key: 'kg', header: t('unit.kg'), align: 'right', cell: (r) => <span className="font-medium">{qty(r.qty_kg)}</span> },
+            { key: 'kg', phone: 'value', header: t('unit.kg'), align: 'right', cell: (r) => <span className="font-medium">{qty(r.qty_kg)}</span> },
             ...(showValue
               ? [
                   { key: 'avg', header: t('stock.avgCost'), align: 'right' as const, cell: (r: StockRow) => money(r.avg_cost) },

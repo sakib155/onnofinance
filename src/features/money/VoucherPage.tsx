@@ -7,7 +7,7 @@ import { PrintButton } from '@/components/common'
 import { DocPage, SignatureFooter, useUserName } from '@/components/doc/Document'
 import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
-import { Badge, Loading, PageHeader } from '@/components/ui/layout'
+import { Badge, PageHeader, Pending } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { rpc, useData, useSave } from '@/lib/data'
@@ -25,7 +25,7 @@ export function VoucherPage() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const { data: v, isLoading } = useData<MoneyTxn>(['voucher', id], () => supabase.from('v_money_txns').select('*').eq('id', id!).single())
+  const { data: v, error } = useData<MoneyTxn>(['voucher', id], () => supabase.from('v_money_txns').select('*').eq('id', id!).single())
   const { data: settled } = useData<Settlement[]>(['settlements', id], () =>
     supabase.from('bill_settlements').select('id, amount, sale:sales(id, sale_no), purchase:purchases(id, purchase_no)').eq('money_txn_id', id!) as never,
   )
@@ -34,7 +34,7 @@ export function VoucherPage() {
   const createdBy = useUserName(v?.created_by)
   const ref = useRef<HTMLDivElement>(null)
 
-  if (isLoading || !v) return <Loading />
+  if (!v) return <Pending error={error} />
   // recorded together with a sale or purchase: changed from there, not here
   const linkTo = v.linked_sale_id ? `/sales/${v.linked_sale_id}` : v.linked_purchase_id ? `/purchases/${v.linked_purchase_id}` : null
   const linkNo = v.linked_sale_no ?? v.linked_purchase_no

@@ -94,9 +94,10 @@ export function LedgerView({ account, party, debitLabel, creditLabel, title }: {
         rows={rows}
         rowKey={(r) => `${r.row_no}-${r.entry_id}`}
         columns={[
-          { key: 'date', header: t('common.date'), cell: (r) => (r.row_no === 0 ? '' : date(r.entry_date)), className: 'whitespace-nowrap' },
+          { key: 'date', phone: 'sub', header: t('common.date'), cell: (r) => (r.row_no === 0 ? '' : date(r.entry_date)), className: 'whitespace-nowrap' },
           {
             key: 'detail',
+            phone: 'title',
             header: t('ledger.details'),
             cell: (r) => {
               if (r.row_no === 0) return <span className="font-medium">{t('ledger.opening')}</span>
@@ -134,6 +135,7 @@ export function LedgerView({ account, party, debitLabel, creditLabel, title }: {
           },
           {
             key: 'bal',
+            phone: 'value',
             header: t('common.balance'),
             align: 'right',
             cell: (r) => <Money value={r.balance} colored />,

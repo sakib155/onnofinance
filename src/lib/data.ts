@@ -3,11 +3,12 @@ import { friendlyError } from './errors'
 import { supabase } from './supabase'
 import type { Account, Item, Party, Warehouse } from './types'
 
-type Result<T> = { data: T | null; error: { message: string } | null }
+type Result<T> = { data: T | null; error: { message: string; code?: string } | null }
 
 export async function unwrap<T>(p: PromiseLike<Result<T>>): Promise<T> {
   const { data, error } = await p
-  if (error) throw new Error(friendlyError(error.message))
+  // the database's error code is kept for screens that react to it (a record that is not there)
+  if (error) throw Object.assign(new Error(friendlyError(error.message)), { code: error.code })
   return data as T
 }
 

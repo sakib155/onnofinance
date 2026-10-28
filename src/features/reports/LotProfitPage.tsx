@@ -1,10 +1,11 @@
+import clsx from 'clsx'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { DateRange, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Select } from '@/components/ui/form'
-import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { sourceTone } from '@/features/stock/LotsPage'
 import { useData } from '@/lib/data'
@@ -76,7 +77,7 @@ export function LotProfitPage() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className={clsx(statGrid, 'mb-4 sm:grid-cols-4')}>
         <Stat label={t('reports.salesValue')} value={money(sum('revenue'))} />
         <Stat label={t('trading.costOfGoods')} value={money(sum('cost_of_sold'))} />
         <Stat label={t('reports.grossProfit')} value={money(sum('profit'))} tone={sum('profit') < 0 ? 'down' : undefined} />
@@ -90,6 +91,7 @@ export function LotProfitPage() {
           columns={[
             {
               key: 'lot',
+              phone: 'title',
               header: t('stock.lot'),
               cell: (r) => {
                 const l = link(r)
@@ -128,6 +130,7 @@ export function LotProfitPage() {
             { key: 'rev', header: t('reports.salesValue'), align: 'right', cell: (r) => (num(r.revenue) ? money(r.revenue) : ''), footer: money(sum('revenue')) },
             {
               key: 'profit',
+              phone: 'value',
               header: t('reports.grossProfit'),
               align: 'right',
               cell: (r) =>

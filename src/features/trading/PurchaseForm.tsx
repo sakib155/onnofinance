@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AccountSelect, isMoneyAccount, PartyPicker, WarehouseSelect } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select, Textarea } from '@/components/ui/form'
+import { Field, Input, MoreFields, Select, Textarea } from '@/components/ui/form'
 import { Card, ErrorBox, Loading, PageHeader } from '@/components/ui/layout'
 import { useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
@@ -176,15 +176,17 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
             <Field label={t('trading.receiveInto')}>
               <WarehouseSelect value={h.warehouse_id} onChange={set('warehouse_id')} />
             </Field>
-            <Field label={t('trading.broker')}>
-              <PartyPicker value={h.broker_id} onChange={set('broker_id')} type="BROKER" clearable placeholder={t('common.none')} />
-            </Field>
-            <Field label={t('trading.vehicleNo')}>
-              <Input value={h.vehicle_no} onChange={(e) => set('vehicle_no')(e.target.value)} />
-            </Field>
-            <Field label={t('common.reference')}>
-              <Input value={h.reference} onChange={(e) => set('reference')(e.target.value)} placeholder={t('trading.referenceHint')} />
-            </Field>
+            <MoreFields label={t('trading.morePurchaseInfo')} filled={Boolean(h.broker_id || h.vehicle_no || h.reference)}>
+              <Field label={t('trading.broker')}>
+                <PartyPicker value={h.broker_id} onChange={set('broker_id')} type="BROKER" clearable placeholder={t('common.none')} />
+              </Field>
+              <Field label={t('trading.vehicleNo')}>
+                <Input value={h.vehicle_no} onChange={(e) => set('vehicle_no')(e.target.value)} />
+              </Field>
+              <Field label={t('common.reference')}>
+                <Input value={h.reference} onChange={(e) => set('reference')(e.target.value)} placeholder={t('trading.referenceHint')} />
+              </Field>
+            </MoreFields>
           </div>
         </Card>
 
@@ -195,32 +197,6 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title={t('trading.costsAndPayment')}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t('trading.discount')}>
-                <Input type="number" min="0" step="0.01" value={h.discount} onChange={(e) => set('discount')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.commission')} hint={h.broker_id ? undefined : t('trading.commissionNeedsBroker')}>
-                <Input type="number" min="0" step="0.01" value={h.commission_amount} onChange={(e) => set('commission_amount')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.transport')}>
-                <Input type="number" min="0" step="0.01" value={h.transport_cost} onChange={(e) => set('transport_cost')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.labour')}>
-                <Input type="number" min="0" step="0.01" value={h.labour_cost} onChange={(e) => set('labour_cost')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.otherCost')}>
-                <Input type="number" min="0" step="0.01" value={h.other_cost} onChange={(e) => set('other_cost')(e.target.value)} />
-              </Field>
-              <Field label={t('trading.costsPaidBy')}>
-                <Select value={costsByUs ? 'ACCOUNT' : 'SUPPLIER'} onChange={(e) => setCostsByUs(e.target.value === 'ACCOUNT')}>
-                  <option value="SUPPLIER">{t('trading.addedToSupplierBill')}</option>
-                  <option value="ACCOUNT">{t('trading.paidByUs')}</option>
-                </Select>
-              </Field>
-              {costsByUs && (
-                <Field label={t('money.paidFrom')}>
-                  <AccountSelect value={h.costs_account_id} onChange={set('costs_account_id')} filter={isMoneyAccount} />
-                </Field>
-              )}
               <Field label={t('trading.paidNow')}>
                 <Input type="number" min="0" step="0.01" value={h.paid_amount} onChange={(e) => set('paid_amount')(e.target.value)} />
               </Field>
@@ -252,9 +228,42 @@ function PurchaseEditor({ id, existing: p, defaultWarehouse }: { id?: string; ex
                   )}
                 </>
               )}
-              <Field label={t('common.notes')} className="sm:col-span-2">
-                <Textarea value={h.notes} onChange={(e) => set('notes')(e.target.value)} />
-              </Field>
+              <MoreFields
+                label={t('trading.morePurchaseCosts')}
+                filled={Boolean(
+                  num(h.discount) || num(h.commission_amount) || num(h.transport_cost) || num(h.labour_cost) || num(h.other_cost) || costsByUs || h.notes,
+                )}
+              >
+                <Field label={t('trading.discount')}>
+                  <Input type="number" min="0" step="0.01" value={h.discount} onChange={(e) => set('discount')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.commission')} hint={h.broker_id ? undefined : t('trading.commissionNeedsBroker')}>
+                  <Input type="number" min="0" step="0.01" value={h.commission_amount} onChange={(e) => set('commission_amount')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.transport')}>
+                  <Input type="number" min="0" step="0.01" value={h.transport_cost} onChange={(e) => set('transport_cost')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.labour')}>
+                  <Input type="number" min="0" step="0.01" value={h.labour_cost} onChange={(e) => set('labour_cost')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.otherCost')}>
+                  <Input type="number" min="0" step="0.01" value={h.other_cost} onChange={(e) => set('other_cost')(e.target.value)} />
+                </Field>
+                <Field label={t('trading.costsPaidBy')}>
+                  <Select value={costsByUs ? 'ACCOUNT' : 'SUPPLIER'} onChange={(e) => setCostsByUs(e.target.value === 'ACCOUNT')}>
+                    <option value="SUPPLIER">{t('trading.addedToSupplierBill')}</option>
+                    <option value="ACCOUNT">{t('trading.paidByUs')}</option>
+                  </Select>
+                </Field>
+                {costsByUs && (
+                  <Field label={t('money.paidFrom')}>
+                    <AccountSelect value={h.costs_account_id} onChange={set('costs_account_id')} filter={isMoneyAccount} />
+                  </Field>
+                )}
+                <Field label={t('common.notes')} className="sm:col-span-2">
+                  <Textarea value={h.notes} onChange={(e) => set('notes')(e.target.value)} />
+                </Field>
+              </MoreFields>
             </div>
           </Card>
           <Card title={t('common.summary')}>

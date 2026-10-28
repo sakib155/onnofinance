@@ -23,7 +23,7 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, T
 import { useAuth, useCan } from '@/app/auth'
 import { VIEW } from '@/app/Layout'
 import { nameOf } from '@/components/common'
-import { Badge, Card, Loading, type Tone } from '@/components/ui/layout'
+import { Badge, Card, Pending, type Tone } from '@/components/ui/layout'
 import { useBatches } from '@/features/production/ProductionPage'
 import type { Batch, BatchKind } from '@/features/production/types'
 import { useStockSummary } from '@/features/stock/StockPage'
@@ -86,7 +86,7 @@ export function Dashboard() {
   const books = can('books')
   const [period, setPeriod] = useState<Period>('month')
   const { from, to } = range(period)
-  const { data: raw, isLoading } = useData<Partial<Stats>>(['dashboard', from, to], () => supabase.rpc('dashboard_stats', { p_from: from, p_to: to }))
+  const { data: raw, error } = useData<Partial<Stats>>(['dashboard', from, to], () => supabase.rpc('dashboard_stats', { p_from: from, p_to: to }))
   const { data: running } = useBatches('RUNNING')
   const { data: parties } = useParties()
   const { data: stock } = useStockSummary()
@@ -94,7 +94,7 @@ export function Dashboard() {
     supabase.from('v_sales_orders').select('*').eq('status', 'OPEN').order('delivery_date', { ascending: true, nullsFirst: false }),
   )
 
-  if (isLoading || !raw) return <Loading />
+  if (!raw) return <Pending error={error} />
   const s = withDefaults(raw)
 
   const toDeliver = (orders ?? []).filter((o) => o.progress !== 'DELIVERED')
@@ -169,7 +169,7 @@ export function Dashboard() {
 
       {/* Money position */}
       {books && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 [&>*]:min-w-0">
           <Kpi icon={Wallet} accent="brand" label={t('dashboard.cash')} value={money(s.cash)} hint={`${t('dashboard.bank')}: ${money(s.bank)}`} to="/accounts" />
           <Kpi icon={TrendingUp} accent="sky" label={t('dashboard.receivable')} value={money(s.receivable)} hint={t('dashboard.receivableHint')} to="/reports/dues" />
           <Kpi icon={TrendingDown} accent="amber" label={t('dashboard.payable')} value={money(s.payable)} hint={t('dashboard.payableHint')} to="/reports/dues" />
@@ -411,9 +411,9 @@ const ACCENTS = {
 
 function Kpi({ icon: Icon, accent, label, value, hint, to }: { icon: LucideIcon; accent: keyof typeof ACCENTS; label: string; value: string; hint?: string; to: string }) {
   return (
-    <Link to={to} className="flex min-w-0 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300">
-      <span className={clsx('flex size-10 shrink-0 items-center justify-center rounded-lg', ACCENTS[accent])}>
-        <Icon className="size-5" />
+    <Link to={to} className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:border-slate-300 sm:flex-row sm:gap-3 sm:p-4">
+      <span className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10', ACCENTS[accent])}>
+        <Icon className="size-4 sm:size-5" />
       </span>
       <span className="min-w-0">
         <span className="block text-xs font-medium text-slate-500">{label}</span>

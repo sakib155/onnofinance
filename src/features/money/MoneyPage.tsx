@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,7 @@ import { useCan } from '@/app/auth'
 import { AccountSelect, DateRange, isMoneyAccount } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/form'
-import { Badge, Card, PageHeader, Stat } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Stat, statGrid } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
 import { useData } from '@/lib/data'
 import { date, money, monthStart, num, today } from '@/lib/format'
@@ -62,7 +63,7 @@ export function MoneyPage() {
           )
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className={clsx(statGrid, 'mb-4 sm:grid-cols-3')}>
         <Stat label={t('money.totalIn')} value={money(totalIn)} />
         <Stat label={t('money.totalOut')} value={money(totalOut)} />
         <Stat label={t('money.net')} value={money(totalIn - totalOut)} tone={totalIn - totalOut < 0 ? 'down' : undefined} />
@@ -96,15 +97,17 @@ export function MoneyPage() {
           onRowClick={(r) => navigate(`/money/${r.id}`)}
           rowClassName={(r) => (r.cheque_status === 'BOUNCED' ? 'opacity-50 line-through' : undefined)}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (r) => date(r.txn_date), className: 'whitespace-nowrap' },
-            { key: 'no', header: t('common.voucherNo'), cell: (r) => <span className="text-xs text-slate-500">{r.txn_no}</span> },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (r) => date(r.txn_date), className: 'whitespace-nowrap' },
+            { key: 'no', phone: 'sub', header: t('common.voucherNo'), cell: (r) => <span className="text-xs text-slate-500">{r.txn_no}</span> },
             {
               key: 'type',
+              phone: 'sub',
               header: t('money.kind'),
               cell: (r) => <Badge tone={isInflow(r.txn_type) ? 'green' : r.txn_type === 'TRANSFER' ? 'blue' : 'amber'}>{t(`money.type.${r.txn_type}`)}</Badge>,
             },
             {
               key: 'who',
+              phone: 'title',
               header: t('money.details'),
               cell: (r) => (
                 <div>
@@ -122,13 +125,22 @@ export function MoneyPage() {
             },
             {
               key: 'in',
+              phone: 'value',
               header: t('money.in'),
               align: 'right',
               cell: (r) => (side(r) === 'in' ? money(r.amount) : side(r) === 'both' ? <span className="text-slate-400">{money(r.amount)}</span> : ''),
+              // one amount on the phone: green coming in, red going out
+              phoneCell: (r) => (
+                <span className={side(r) === 'in' ? 'text-brand-700' : side(r) === 'out' ? 'text-red-600' : 'text-slate-500'}>
+                  {side(r) === 'in' ? '+' : side(r) === 'out' ? '−' : ''}
+                  {money(r.amount)}
+                </span>
+              ),
               footer: money(totalIn),
             },
             {
               key: 'out',
+              phone: 'hide',
               header: t('money.out'),
               align: 'right',
               cell: (r) => (side(r) === 'out' ? money(r.amount) : side(r) === 'both' ? <span className="text-slate-400">{money(r.amount)}</span> : ''),

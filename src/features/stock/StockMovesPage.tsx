@@ -256,9 +256,10 @@ export function StockMovesPage() {
           rows={rows}
           rowKey={(m) => String(m.id)}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (m) => date(m.movement_date), className: 'whitespace-nowrap' },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (m) => date(m.movement_date), className: 'whitespace-nowrap' },
             {
               key: 'src',
+              phone: 'sub',
               header: t('stock.movement'),
               cell: (m) => {
                 const link = sourceLink(m.source_type, m.source_id)
@@ -271,7 +272,7 @@ export function StockMovesPage() {
                 )
               },
             },
-            { key: 'item', header: t('common.item'), cell: (m) => nameOf(m.item) },
+            { key: 'item', phone: 'title', header: t('common.item'), cell: (m) => nameOf(m.item) },
             { key: 'wh', header: t('stock.warehouse'), cell: (m) => m.warehouse.name },
             { key: 'lot', header: t('stock.lot'), cell: (m) => <span className="text-xs text-slate-500">{m.lot?.lot_no}</span> },
             { key: 'in', header: t('stock.in'), align: 'right', cell: (m) => (num(m.qty_kg) > 0 ? qty(m.qty_kg) : '') },

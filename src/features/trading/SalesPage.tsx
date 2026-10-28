@@ -9,7 +9,7 @@ import { DocPage, DocRow, SignatureFooter, td, th, useUserName } from '@/compone
 import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Input } from '@/components/ui/form'
-import { Badge, Card, Loading, PageHeader } from '@/components/ui/layout'
+import { Badge, Card, PageHeader, Pending } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
@@ -69,11 +69,11 @@ export function SalesPage() {
           rowKey={(s) => s.id}
           onRowClick={(s) => navigate(`/sales/${s.id}`)}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (s) => date(s.sale_date), className: 'whitespace-nowrap' },
-            { key: 'no', header: t('trading.invoiceNo'), cell: (s) => <span className="font-medium">{s.sale_no}</span> },
-            { key: 'po', header: t('orders.poNumber'), cell: (s) => s.po_number || <span className="text-slate-400">—</span> },
-            { key: 'cus', header: t('trading.customer'), cell: (s) => nameOf({ name: s.customer_name, name_bn: s.customer_name_bn }) },
-            { key: 'total', header: t('common.total'), align: 'right', cell: (s) => money(s.total_amount), footer: money(rows.reduce((a, s) => a + num(s.total_amount), 0)) },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (s) => date(s.sale_date), className: 'whitespace-nowrap' },
+            { key: 'no', phone: 'sub', header: t('trading.invoiceNo'), cell: (s) => <span className="font-medium whitespace-nowrap">{s.sale_no}</span> },
+            { key: 'po', header: t('orders.poNumber'), className: 'whitespace-nowrap', cell: (s) => s.po_number || <span className="text-slate-400">—</span>, phoneCell: (s) => s.po_number },
+            { key: 'cus', phone: 'title', header: t('trading.customer'), cell: (s) => nameOf({ name: s.customer_name, name_bn: s.customer_name_bn }) },
+            { key: 'total', phone: 'value', header: t('common.total'), align: 'right', cell: (s) => money(s.total_amount), footer: money(rows.reduce((a, s) => a + num(s.total_amount), 0)) },
             {
               key: 'due',
               header: t('common.due'),
@@ -322,7 +322,7 @@ export function SaleView() {
   const ref = useRef<HTMLDivElement>(null)
   const [deleting, setDeleting] = useState(false)
   const [kind, setKind] = useState<DocKind>('invoice')
-  const { data: s, isLoading } = useData<SaleDetail>(['sale-view', id], () =>
+  const { data: s, error } = useData<SaleDetail>(['sale-view', id], () =>
     supabase
       .from('sales')
       .select(
@@ -342,7 +342,7 @@ export function SaleView() {
   )
   const createdBy = useUserName(s?.created_by)
   const del = useSave(() => rpc('delete_sale', { p_id: id }))
-  if (isLoading || !s) return <Loading />
+  if (!s) return <Pending error={error} />
   const profit = num(s.goods_amount) - num(s.discount) - num(s.cost_amount)
   const ledgerRows = [...(dayLedger ?? [])].sort((a, b) => a.row_no - b.row_no)
   const at = ledgerRows.findIndex((r) => r.source_type === 'SALE' && r.source_id === s.id)

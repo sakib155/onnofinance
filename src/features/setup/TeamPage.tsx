@@ -119,6 +119,7 @@ export function TeamPage() {
             columns={[
               {
                 key: 'name',
+                phone: 'title',
                 header: t('common.name'),
                 cell: (p) => (
                   <div>
@@ -160,6 +161,7 @@ export function TeamPage() {
           columns={[
             {
               key: 'name',
+              phone: 'title',
               header: t('common.name'),
               cell: (p) => (
                 <div>
@@ -206,6 +208,7 @@ export function TeamPage() {
             columns={[
               {
                 key: 'who',
+                phone: 'title',
                 header: t('common.name'),
                 cell: (i) => (
                   <div className="flex items-center gap-2">

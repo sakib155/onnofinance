@@ -9,7 +9,7 @@ import { DocPage, DocRow, SignatureFooter, td, th, useUserName } from '@/compone
 import { PdfButton } from '@/components/doc/PdfButton'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/form'
-import { Badge, Card, ErrorBox, Loading, PageHeader, Stat, type Tone } from '@/components/ui/layout'
+import { Badge, Card, ErrorBox, Loading, PageHeader, Pending, Stat, statGrid, type Tone } from '@/components/ui/layout'
 import { ConfirmModal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
@@ -143,7 +143,7 @@ export function OrdersPage() {
           )
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={clsx(statGrid, 'mb-4 lg:grid-cols-4')}>
         <Stat label={t('orders.activeOrders')} value={active.length} />
         <Stat label={t('orders.toDeliver')} value={kg(active.reduce((a, o) => a + num(o.remaining_kg), 0))} />
         <Stat label={t('orders.overdueOrders')} value={active.filter((o) => o.overdue).length} tone={active.some((o) => o.overdue) ? 'down' : undefined} />
@@ -171,10 +171,10 @@ export function OrdersPage() {
           onRowClick={(o) => navigate(`/orders/${o.id}`)}
           empty={t('orders.none')}
           columns={[
-            { key: 'date', header: t('common.date'), cell: (o) => date(o.order_date), className: 'whitespace-nowrap' },
-            { key: 'no', header: t('orders.orderNo'), cell: (o) => <span className="font-medium">{o.order_no}</span> },
-            { key: 'po', header: t('orders.poNumber'), cell: (o) => o.po_number || <span className="text-slate-400">—</span> },
-            { key: 'cus', header: t('trading.customer'), cell: (o) => nameOf({ name: o.customer_name, name_bn: o.customer_name_bn }) },
+            { key: 'date', phone: 'sub', header: t('common.date'), cell: (o) => date(o.order_date), className: 'whitespace-nowrap' },
+            { key: 'no', phone: 'sub', header: t('orders.orderNo'), cell: (o) => <span className="font-medium whitespace-nowrap">{o.order_no}</span> },
+            { key: 'po', header: t('orders.poNumber'), className: 'whitespace-nowrap', cell: (o) => o.po_number || <span className="text-slate-400">—</span>, phoneCell: (o) => o.po_number },
+            { key: 'cus', phone: 'title', header: t('trading.customer'), cell: (o) => nameOf({ name: o.customer_name, name_bn: o.customer_name_bn }) },
             {
               key: 'deliv',
               header: t('orders.deliveryDate'),
@@ -194,7 +194,7 @@ export function OrdersPage() {
                 </div>
               ),
             },
-            { key: 'rem', header: t('orders.remaining'), align: 'right', cell: (o) => (num(o.remaining_kg) > 0 ? kg(o.remaining_kg) : '—') },
+            { key: 'rem', phone: 'value', header: t('orders.remaining'), align: 'right', cell: (o) => (num(o.remaining_kg) > 0 ? kg(o.remaining_kg) : '—') },
             { key: 'status', header: t('common.status'), cell: (o) => <ProgressBadge o={o} /> },
           ]}
         />
@@ -451,7 +451,7 @@ export function OrderView() {
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [confirm, setConfirm] = useState<null | 'delete' | OrderStatus>(null)
-  const { data: o, isLoading } = useData<OrderRow & { customer: { name: string; name_bn: string | null; phone: string | null; address: string | null }; warehouse: { name: string } | null }>(
+  const { data: o, error } = useData<OrderRow & { customer: { name: string; name_bn: string | null; phone: string | null; address: string | null }; warehouse: { name: string } | null }>(
     ['order-view', id],
     () => supabase.from('v_sales_orders').select('*, customer:parties!sales_orders_customer_id_fkey(name, name_bn, phone, address), warehouse:warehouses(name)').eq('id', id!).single() as never,
   )
@@ -464,7 +464,7 @@ export function OrderView() {
   const createdBy = useUserName(o?.created_by)
   const setStatus = useSave((s: OrderStatus) => rpc('set_sales_order_status', { p_id: id, p_status: s }))
   const del = useSave(() => rpc('delete_sales_order', { p_id: id }))
-  if (isLoading || !o) return <Loading />
+  if (!o) return <Pending error={error} />
   const sorted = [...(lines ?? [])].sort((a, b) => a.line_no - b.line_no)
   const isOpen = o.status === 'OPEN'
 
@@ -537,7 +537,7 @@ export function OrderView() {
         }
       />
 
-      <div className="no-print mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={clsx(statGrid, 'no-print mb-4 lg:grid-cols-4')}>
         <Stat label={t('orders.ordered')} value={kg(o.ordered_kg)} hint={num(o.ordered_bags) ? `${qty(o.ordered_bags)} ${t('unit.bags')}` : undefined} />
         <Stat label={t('orders.delivered')} value={kg(o.delivered_kg)} hint={`${qty(o.delivered_pct, 0)}% · ${t('orders.invoiceCount', { count: num(o.invoice_count) })}`} />
         <Stat label={t('orders.remaining')} value={kg(o.remaining_kg)} tone={o.overdue ? 'down' : undefined} hint={o.delivery_date ? `${t('orders.due')} ${date(o.delivery_date)}` : undefined} />
@@ -550,11 +550,12 @@ export function OrderView() {
             rows={sorted}
             rowKey={(l) => l.id}
             columns={[
-              { key: 'item', header: t('common.item'), cell: (l) => <span className="font-medium">{nameOf(l.item)}</span> },
+              { key: 'item', phone: 'title', header: t('common.item'), cell: (l) => <span className="font-medium">{nameOf(l.item)}</span> },
               { key: 'ord', header: t('orders.ordered'), align: 'right', cell: (l) => kg(l.qty_kg) },
               { key: 'del', header: t('orders.delivered'), align: 'right', cell: (l) => kg(l.delivered_kg) },
               {
                 key: 'rem',
+                phone: 'value',
                 header: t('orders.remaining'),
                 align: 'right',
                 cell: (l) =>
@@ -579,11 +580,11 @@ export function OrderView() {
             onRowClick={(d) => navigate(`/sales/${d.id}`)}
             empty={t('orders.noDeliveries')}
             columns={[
-              { key: 'date', header: t('common.date'), cell: (d) => date(d.sale_date), className: 'whitespace-nowrap' },
-              { key: 'no', header: t('trading.invoiceNo'), cell: (d) => <span className="font-medium">{d.sale_no}</span> },
+              { key: 'date', phone: 'sub', header: t('common.date'), cell: (d) => date(d.sale_date), className: 'whitespace-nowrap' },
+              { key: 'no', phone: 'title', header: t('trading.invoiceNo'), cell: (d) => <span className="font-medium whitespace-nowrap">{d.sale_no}</span> },
               { key: 'veh', header: t('trading.vehicleNo'), cell: (d) => d.vehicle_no || '—' },
               { key: 'kg', header: t('trading.weightKg'), align: 'right', cell: (d) => qty(d.lines.reduce((a, l) => a + num(l.qty_kg), 0)) },
-              { key: 'amt', header: t('common.total'), align: 'right', cell: (d) => money(d.total_amount) },
+              { key: 'amt', phone: 'value', header: t('common.total'), align: 'right', cell: (d) => money(d.total_amount) },
               {
                 key: 'due',
                 header: t('common.due'),

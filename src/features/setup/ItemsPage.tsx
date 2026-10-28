@@ -161,8 +161,8 @@ export function ItemsPage() {
           onRowClick={can('setup') ? setEditing : undefined}
           rowClassName={(i) => (i.is_active ? undefined : 'opacity-50')}
           columns={[
-            { key: 'code', header: t('common.code'), cell: (i) => <span className="text-slate-500">{i.code}</span> },
-            { key: 'name', header: t('common.name'), cell: (i) => <span className="font-medium">{nameOf(i)}</span> },
+            { key: 'code', phone: 'sub', header: t('common.code'), cell: (i) => <span className="text-slate-500">{i.code}</span> },
+            { key: 'name', phone: 'title', header: t('common.name'), cell: (i) => <span className="font-medium">{nameOf(i)}</span> },
             { key: 'cat', header: t('items.category'), cell: (i) => <Badge tone={categoryTone[i.category]}>{t(`category.${i.category}`)}</Badge> },
             {
               key: 'out',
@@ -180,6 +180,7 @@ export function ItemsPage() {
             { key: 'bag', header: t('items.bagSize'), align: 'right', cell: (i) => (num(i.default_bag_kg) ? `${qty(i.default_bag_kg)} ${t('unit.kg')}` : '—') },
             {
               key: 'price',
+              phone: 'value',
               header: t('items.standardPrice'),
               align: 'right',
               cell: (i) => (

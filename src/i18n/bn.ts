@@ -4,6 +4,8 @@ export const bn: typeof en = {
   app: { name: 'অন্ন', tagline: 'রাইস মিল ও চালের ব্যবসা' },
   nav: {
     dashboard: 'ড্যাশবোর্ড',
+    home: 'হোম',
+    more: 'আরও',
     trading: 'ক্রয়-বিক্রয়',
     purchases: 'ক্রয়',
     orders: 'অর্ডার',
@@ -34,6 +36,7 @@ export const bn: typeof en = {
     audit: 'পরিবর্তনের খাতা',
   },
   common: {
+    back: 'ফিরে যান',
     save: 'সংরক্ষণ',
     cancel: 'বাতিল',
     confirm: 'নিশ্চিত',
@@ -390,6 +393,10 @@ export const bn: typeof en = {
     actions: { INSERT: 'তৈরি', UPDATE: 'পরিবর্তন', DELETE: 'মুছে ফেলা' },
   },
   trading: {
+    moreDelivery: 'ট্রাক, চালক বা দালাল যোগ করুন',
+    moreSaleCharges: 'গাড়ি ভাড়া, লেবার, ছাড়, দালালি বা নোট যোগ করুন',
+    morePurchaseInfo: 'দালাল, ট্রাক বা রেফারেন্স যোগ করুন',
+    morePurchaseCosts: 'ছাড়, দালালি, গাড়ি ভাড়া, লেবার, অন্যান্য খরচ বা নোট যোগ করুন',
     paidWithInvoice: 'এই বিলের সাথে পরিশোধ',
     previousDue: 'আগের বাকি',
     previousAdvance: 'আগের অগ্রিম',
@@ -479,6 +486,7 @@ export const bn: typeof en = {
     deleteSaleConfirm: 'বিক্রয় {{no}} মুছবেন? মাল আবার মজুদে ফিরবে।',
   },
   orders: {
+    morePo: 'অর্ডারের সাথে মেলান বা ক্রেতার পিও নং দিন',
     subtitle: 'ক্রেতার অর্ডার ও তাদের পিও নম্বর, এক বা একাধিক বিলে ডেলিভারি',
     new: 'নতুন অর্ডার',
     edit: 'অর্ডার সম্পাদনা',
@@ -784,10 +792,12 @@ export const bn: typeof en = {
     inUse: 'এটি অন্য রেকর্ডে ব্যবহৃত, তাই মোছা যাবে না। বরং নিষ্ক্রিয় করুন।',
     session: 'লগইনের মেয়াদ শেষ। আবার লগইন করুন।',
     network: 'সার্ভারে পৌঁছানো যাচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।',
+    notFound: 'এই রেকর্ডটি পাওয়া যায়নি। হয়তো মুছে ফেলা হয়েছে, অথবা লিংকটি ভুল।',
   },
   dberr: {
     permission: 'এই কাজের অনুমতি আপনার নেই',
     addItem: 'অন্তত একটি পণ্য যোগ করুন',
+    finishBeforeStart: 'শেষ হওয়ার সময় শুরুর সময়ের আগে হতে পারে না',
     lineItem: 'লাইন {{line}}: একটি পণ্য বাছুন',
     lineBags: 'লাইন {{line}}: বস্তা প্রতি দরের জন্য বস্তার সংখ্যা দিন',
     lineOrderedWeight: 'লাইন {{line}}: অর্ডারের ওজন দিন',

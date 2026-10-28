@@ -2,6 +2,8 @@ export const en = {
   app: { name: 'Onno', tagline: 'Rice mill & trading' },
   nav: {
     dashboard: 'Dashboard',
+    home: 'Home',
+    more: 'More',
     trading: 'Trading',
     purchases: 'Purchases',
     orders: 'Orders',
@@ -32,6 +34,7 @@ export const en = {
     audit: 'Audit log',
   },
   common: {
+    back: 'Go back',
     save: 'Save',
     cancel: 'Cancel',
     confirm: 'Confirm',
@@ -388,6 +391,10 @@ export const en = {
     actions: { INSERT: 'Created', UPDATE: 'Changed', DELETE: 'Deleted' },
   },
   trading: {
+    moreDelivery: 'Add truck, driver or broker',
+    moreSaleCharges: 'Add transport, labour, discount, commission or notes',
+    morePurchaseInfo: 'Add broker, truck or reference',
+    morePurchaseCosts: 'Add discount, commission, transport, labour, other costs or notes',
     paidWithInvoice: 'Paid with this invoice',
     previousDue: 'Previous due',
     previousAdvance: 'Previous advance',
@@ -477,6 +484,7 @@ export const en = {
     deleteSaleConfirm: 'Delete sale {{no}}? The goods go back into stock.',
   },
   orders: {
+    morePo: 'Link an order or add the customer\'s PO number',
     subtitle: 'Customer orders with their PO number, delivered in one or more invoices',
     new: 'New order',
     edit: 'Edit order',
@@ -782,10 +790,12 @@ export const en = {
     inUse: 'This is used in other records, so it cannot be deleted. Mark it inactive instead.',
     session: 'Your sign-in has expired. Please sign in again.',
     network: 'Could not reach the server. Check the internet connection and try again.',
+    notFound: 'This record could not be found. It may have been deleted, or the link is wrong.',
   },
   dberr: {
     permission: 'You do not have permission for this action',
     addItem: 'Add at least one item',
+    finishBeforeStart: 'The finish time is before the start time',
     lineItem: 'Line {{line}}: choose an item',
     lineBags: 'Line {{line}}: enter the number of bags for a per-bag rate',
     lineOrderedWeight: 'Line {{line}}: enter the ordered weight',

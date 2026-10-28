@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Loading } from '@/components/ui/layout'
 import { setLanguage } from '@/i18n'
 import { useAuth, useCan, type Permission } from './auth'
@@ -143,6 +143,41 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+// On a phone the busiest pages sit in a bar at the bottom; the rest are in the menu
+const phoneBar: NavItem[] = [
+  { to: '/', label: 'nav.home', icon: LayoutDashboard },
+  { to: '/sales', label: 'nav.sales', icon: ShoppingCart, perm: VIEW.sales },
+  { to: '/purchases', label: 'nav.purchases', icon: ArrowDownToLine, perm: VIEW.purchases },
+  { to: '/mill', label: 'nav.mill', icon: Activity, perm: VIEW.production },
+]
+
+function PhoneBar({ onMenu }: { onMenu: () => void }) {
+  const { t } = useTranslation()
+  const can = useCan()
+  const item = 'flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] leading-tight'
+  return (
+    <nav className="no-print fixed inset-x-0 bottom-0 z-30 flex h-16 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+      {phoneBar
+        .filter((i) => !i.perm || can(...i.perm))
+        .map((i) => (
+          <NavLink
+            key={i.to}
+            to={i.to}
+            end={i.to === '/'}
+            className={({ isActive }) => clsx(item, isActive ? 'font-semibold text-brand-700' : 'text-slate-500')}
+          >
+            <i.icon className="size-5" />
+            {t(i.label)}
+          </NavLink>
+        ))}
+      <button className={clsx(item, 'text-slate-500')} onClick={onMenu}>
+        <Menu className="size-5" />
+        {t('nav.more')}
+      </button>
+    </nav>
+  )
+}
+
 export function Layout() {
   const { t, i18n } = useTranslation()
   const { profile, signOut } = useAuth()
@@ -168,6 +203,10 @@ export function Layout() {
         <button className="text-slate-600 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <Menu className="size-5" />
         </button>
+        <Link to="/" className="flex items-center gap-2 lg:hidden">
+          <img src="/favicon.svg" alt="" className="size-7" />
+          <span className="text-sm font-bold text-brand-900">{t('app.name')}</span>
+        </Link>
         <div className="flex-1" />
         <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs">
           {(['en', 'bn'] as const).map((l) => (
@@ -188,11 +227,12 @@ export function Layout() {
           <LogOut className="size-4" />
         </button>
       </header>
-      <main className="mx-auto max-w-7xl p-4 sm:p-6">
+      <main className="mx-auto max-w-7xl p-4 pb-24 sm:p-6 sm:pb-24 lg:pb-6">
         <Suspense fallback={<Loading />}>
           <Outlet />
         </Suspense>
       </main>
+      <PhoneBar onMenu={() => setOpen(true)} />
     </div>
   )
 }

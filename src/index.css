@@ -37,4 +37,12 @@ body {
     box-shadow: none !important;
     border: none !important;
   }
+  .doc-page {
+    zoom: 1 !important;
+  }
+}
+
+/* Document pages are shrunk to fit a phone screen; a PDF is always made at full A4 size */
+.pdf-capture .doc-page {
+  zoom: 1 !important;
 }

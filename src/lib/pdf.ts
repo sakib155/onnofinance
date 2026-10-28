@@ -18,12 +18,22 @@ async function build(root: HTMLElement) {
   return pdf!
 }
 
+// Pages shown shrunk on a phone go back to full size while they are captured
+async function fullSize<T>(make: () => Promise<T>) {
+  document.documentElement.classList.add('pdf-capture')
+  try {
+    return await make()
+  } finally {
+    document.documentElement.classList.remove('pdf-capture')
+  }
+}
+
 export async function downloadPdf(root: HTMLElement, filename: string) {
-  ;(await build(root)).save(filename)
+  ;(await fullSize(() => build(root))).save(filename)
 }
 
 // Opens the PDF in a new tab, where it can be printed or shared
 export async function openPdf(root: HTMLElement) {
-  const url = (await build(root)).output('bloburl')
+  const url = (await fullSize(() => build(root))).output('bloburl')
   window.open(url, '_blank')
 }

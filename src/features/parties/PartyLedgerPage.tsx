@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { ArrowLeft, Banknote } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,8 +7,8 @@ import { useCan } from '@/app/auth'
 import { Balance, nameOf, PrintButton } from '@/components/common'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Button, ButtonLink } from '@/components/ui/button'
-import { Badge, Card, Loading, PageHeader, Stat } from '@/components/ui/layout'
-import { Table } from '@/components/ui/table'
+import { Badge, Card, PageHeader, Pending, Stat, statGrid } from '@/components/ui/layout'
+import { Table, type Column } from '@/components/ui/table'
 import { MoneyForm } from '@/features/money/MoneyForm'
 import { LedgerView } from '@/features/reports/Ledger'
 import { StatementPdfButton } from '@/features/reports/StatementPdf'
@@ -51,15 +52,16 @@ export function PartyLedgerPage() {
   const can = useCan()
   const [editing, setEditing] = useState(false)
   const [money_, setMoney] = useState<MoneyTxnType | null>(null)
-  const { data: party, isLoading } = useData<Party>(['party', id], () => supabase.from('v_party_balances').select('*').eq('id', id!).single())
+  const { data: party, error } = useData<Party>(['party', id], () => supabase.from('v_party_balances').select('*').eq('id', id!).single())
   const dues = usePartyDues(id)
 
-  if (isLoading || !party) return <Loading />
+  if (!party) return <Pending error={error} />
   const bal = num(party.balance)
 
-  const billColumns = (kind: 'sales' | 'purchases') => [
+  const billColumns = (kind: 'sales' | 'purchases'): Column<Due>[] => [
     {
       key: 'no',
+      phone: 'title',
       header: t('common.billNo'),
       cell: (d: Due) => (
         <Link to={`/${kind}/${d.id}`} className="text-brand-800 hover:underline">
@@ -67,10 +69,10 @@ export function PartyLedgerPage() {
         </Link>
       ),
     },
-    { key: 'date', header: t('common.date'), cell: (d: Due) => date(d.date) },
+    { key: 'date', phone: 'sub', header: t('common.date'), cell: (d: Due) => date(d.date) },
     { key: 'total', header: t('common.total'), align: 'right' as const, cell: (d: Due) => money(d.total_amount) },
     { key: 'paid', header: t('common.paid'), align: 'right' as const, cell: (d: Due) => money(d.paid_amount) },
-    { key: 'due', header: t('common.due'), align: 'right' as const, cell: (d: Due) => <span className="font-medium">{money(d.due_amount)}</span> },
+    { key: 'due', phone: 'value', header: t('common.due'), align: 'right' as const, cell: (d: Due) => <span className="font-medium">{money(d.due_amount)}</span> },
     { key: 'age', header: t('dues.age'), align: 'right' as const, cell: (d: Due) => t('dues.days', { count: ageDays(d.date) }) },
   ]
 
@@ -128,7 +130,7 @@ export function PartyLedgerPage() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className={clsx(statGrid, 'mb-4 sm:grid-cols-3')}>
         <Stat
           label={t('common.balance')}
           value={<Balance value={bal} />}

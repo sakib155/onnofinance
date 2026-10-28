@@ -197,9 +197,10 @@ export function TrialBalancePage() {
           rows={rows}
           rowKey={(r) => r.account_id}
           columns={[
-            { key: 'code', header: t('common.code'), cell: (r) => <span className="text-slate-500">{r.code}</span> },
+            { key: 'code', phone: 'sub', header: t('common.code'), cell: (r) => <span className="text-slate-500">{r.code}</span> },
             {
               key: 'name',
+              phone: 'title',
               header: t('common.account'),
               cell: (r) => (
                 <Link to={`/accounts/${r.account_id}`} className="hover:text-brand-800 hover:underline">
@@ -257,6 +258,7 @@ export function CashSummaryPage() {
           columns={[
             {
               key: 'name',
+              phone: 'title',
               header: t('common.account'),
               cell: (r) => (
                 <Link to={`/accounts/${r.account_id}`} className="font-medium text-brand-800 hover:underline">
@@ -267,7 +269,7 @@ export function CashSummaryPage() {
             { key: 'open', header: t('reports.opening'), align: 'right', cell: (r) => money(r.opening), footer: total('opening') },
             { key: 'in', header: t('money.in'), align: 'right', cell: (r) => money(r.money_in), footer: total('money_in') },
             { key: 'out', header: t('money.out'), align: 'right', cell: (r) => money(r.money_out), footer: total('money_out') },
-            { key: 'close', header: t('reports.closing'), align: 'right', cell: (r) => <span className="font-semibold">{money(r.closing)}</span>, footer: total('closing') },
+            { key: 'close', phone: 'value', header: t('reports.closing'), align: 'right', cell: (r) => <span className="font-semibold">{money(r.closing)}</span>, footer: total('closing') },
           ]}
         />
       </Card>

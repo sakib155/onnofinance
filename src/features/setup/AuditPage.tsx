@@ -52,10 +52,11 @@ export function AuditPage() {
           rows={data}
           rowKey={(r) => String(r.id)}
           columns={[
-            { key: 'when', header: t('audit.when'), cell: (r) => new Date(r.created_at).toLocaleString(), className: 'whitespace-nowrap' },
-            { key: 'who', header: t('audit.who'), cell: (r) => r.user?.full_name || r.user?.email || '—' },
+            { key: 'when', phone: 'sub', header: t('audit.when'), cell: (r) => new Date(r.created_at).toLocaleString(), className: 'whitespace-nowrap' },
+            { key: 'who', phone: 'sub', header: t('audit.who'), cell: (r) => r.user?.full_name || r.user?.email || '—' },
             {
               key: 'what',
+              phone: 'title',
               header: t('audit.action'),
               cell: (r) => <Badge tone={r.action === 'DELETE' ? 'red' : r.action === 'INSERT' ? 'green' : 'amber'}>{t(`audit.actions.${r.action}`)}</Badge>,
             },
