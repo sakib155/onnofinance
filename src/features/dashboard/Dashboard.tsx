@@ -19,7 +19,6 @@ import {
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth, useCan } from '@/app/auth'
 import { VIEW } from '@/app/Layout'
 import { nameOf } from '@/components/common'
@@ -73,6 +72,72 @@ type Stats = {
 type Period = 'today' | 'month' | 'year'
 const PERIODS: Period[] = ['today', 'month', 'year']
 const range = (p: Period) => ({ from: p === 'today' ? today() : p === 'month' ? monthStart() : yearStart(), to: today() })
+
+// Last six months: sales and purchases as bars, gross profit as a line. Hover a month for its figures.
+function TrendChart({ data, showProfit }: { data: Stats['trend']; showProfit: boolean }) {
+  const { t, i18n } = useTranslation()
+  if (!data.length) return null
+  const series: { key: 'sales' | 'purchases' | 'gross_profit'; label: string; color: string }[] = [
+    { key: 'sales', label: t('nav.sales'), color: '#15803d' },
+    { key: 'purchases', label: t('nav.purchases'), color: '#d97706' },
+    ...(showProfit ? [{ key: 'gross_profit' as const, label: t('dashboard.grossProfit'), color: '#7c3aed' }] : []),
+  ]
+  const values = data.flatMap((d) => series.map((s) => num(d[s.key])))
+  const top = Math.max(1, ...values)
+  const bottom = Math.min(0, ...values)
+  // chart is 100 units high and 10 units per month; the SVG stretches to the box
+  const y = (v: number) => ((top - v) / (top - bottom)) * 100
+  const bar = (v: number, x: number, color: string) => (
+    <rect x={x} width={3} y={Math.min(y(v), y(0))} height={Math.abs(y(v) - y(0))} fill={color} />
+  )
+  const month = (m: string) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short' }).format(new Date(`${m}-01`))
+  return (
+    <div className="mt-4 text-xs text-slate-500">
+      <div className="flex h-48 gap-2">
+        <div className="flex w-12 flex-col justify-between text-right tabular-nums">
+          <span>{compact(top)}</span>
+          <span>{compact(bottom)}</span>
+        </div>
+        <svg viewBox={`0 0 ${data.length * 10} 100`} preserveAspectRatio="none" className="h-full flex-1 overflow-visible" role="img" aria-label={series.map((s) => s.label).join(', ')}>
+          <line x1={0} x2={data.length * 10} y1={y(0)} y2={y(0)} stroke="#cbd5e1" vectorEffect="non-scaling-stroke" />
+          {data.map((d, i) => (
+            <g key={d.month}>
+              <title>{`${month(d.month)}: ${series.map((s) => `${s.label} ${money(d[s.key])}`).join(', ')}`}</title>
+              <rect x={i * 10} width={10} height={100} fill="transparent" />
+              {bar(num(d.sales), i * 10 + 2, series[0].color)}
+              {bar(num(d.purchases), i * 10 + 5, series[1].color)}
+            </g>
+          ))}
+          {showProfit && (
+            <polyline
+              points={data.map((d, i) => `${i * 10 + 5},${y(num(d.gross_profit))}`).join(' ')}
+              fill="none"
+              stroke="#7c3aed"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+            />
+          )}
+        </svg>
+      </div>
+      <div className="ml-14 flex">
+        {data.map((d) => (
+          <span key={d.month} className="flex-1 text-center">
+            {month(d.month)}
+          </span>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap justify-center gap-4">
+        {series.map((s) => (
+          <span key={s.key} className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm" style={{ background: s.color }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const compact = (v: number) => new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
 const pct = (v: number) => `${qty(v, 1)}%`
@@ -226,24 +291,7 @@ export function Dashboard() {
             {books && <Figure label={t('dashboard.collected')} value={money(s.received)} hint={`${t('dashboard.paidOut')}: ${money(s.paid)}`} />}
             {books && <Figure label={t('dashboard.netProfit')} value={money(s.profit)} hint={`${t('dashboard.expenses')}: ${money(s.expenses)}`} tone={num(s.profit) < 0 ? 'down' : 'up'} />}
           </div>
-          <div className="mt-4 h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={s.trend} margin={{ left: 0, right: 8, top: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={(m: string) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short' }).format(new Date(`${m}-01`))}
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis tickFormatter={compact} tick={{ fontSize: 12 }} width={48} />
-                <Tooltip formatter={(v) => money(v)} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="sales" name={t('nav.sales')} fill="#15803d" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="purchases" name={t('nav.purchases')} fill="#d97706" radius={[3, 3, 0, 0]} />
-                {books && <Line dataKey="gross_profit" name={t('dashboard.grossProfit')} stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} type="monotone" />}
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          <TrendChart data={s.trend} showProfit={books} />
         </Card>
       </div>
 

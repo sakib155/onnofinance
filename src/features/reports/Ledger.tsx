@@ -1,10 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { DateRange, Money } from '@/components/common'
 import { Card } from '@/components/ui/layout'
 import { Table } from '@/components/ui/table'
-import { useData } from '@/lib/data'
+import { unwrap } from '@/lib/data'
 import { date, money, monthStart, num, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 
@@ -49,10 +50,22 @@ export function sourceLink(type: string, id: string | null) {
 }
 
 export function useLedger(account: string | null, party: string | null, from: string, to: string) {
-  return useData<LedgerRow[]>(['ledger', account, party, from, to], () =>
-    supabase.rpc('report_ledger', { p_account: account, p_party: party, p_from: from, p_to: to }),
-  )
+  return useQuery({
+    queryKey: ['ledger', account, party, from, to],
+    // The server sends at most 1000 rows at a time; keep asking until a page comes back short
+    queryFn: async () => {
+      const rows: LedgerRow[] = []
+      for (;;) {
+        const page = await unwrap<LedgerRow[]>(
+          supabase.rpc('report_ledger', { p_account: account, p_party: party, p_from: from, p_to: to }).range(rows.length, rows.length + PAGE - 1),
+        )
+        rows.push(...page)
+        if (page.length < PAGE) return rows
+      }
+    },
+  })
 }
+const PAGE = 1000
 
 // Debit/credit headings depend on whose book it is: for a party, debit = they owe more
 export function LedgerView({ account, party, debitLabel, creditLabel, title }: {

@@ -31,6 +31,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Loading } from '@/components/ui/layout'
 import { setLanguage } from '@/i18n'
+import { useData } from '@/lib/data'
+import { supabase } from '@/lib/supabase'
 import { useAuth, useCan, type Permission } from './auth'
 
 type NavItem = { to: string; label: string; icon: LucideIcon; perm?: Permission[] }
@@ -178,6 +180,19 @@ function PhoneBar({ onMenu }: { onMenu: () => void }) {
   )
 }
 
+// The migration this app was built for (supabase/migrations); keep it equal to schema_version() in the newest one
+const SCHEMA_VERSION = 20
+
+// Red bar when the database is behind the app, so a migration that was not run does not pass for real data
+function SchemaWarning() {
+  const { t } = useTranslation()
+  const { data, error } = useData<number>(['schema-version'], () => supabase.rpc('schema_version'), { staleTime: Infinity, retry: false })
+  // PGRST202: the function itself is missing (database from before 0020)
+  const behind = (data !== undefined && data < SCHEMA_VERSION) || (error as { code?: string } | null)?.code === 'PGRST202'
+  if (!behind) return null
+  return <div className="no-print bg-red-600 px-4 py-2 text-center text-sm font-medium text-white">{t('app.dbBehind')}</div>
+}
+
 export function Layout() {
   const { t, i18n } = useTranslation()
   const { profile, signOut } = useAuth()
@@ -227,6 +242,7 @@ export function Layout() {
           <LogOut className="size-4" />
         </button>
       </header>
+      <SchemaWarning />
       <main className="mx-auto max-w-7xl p-4 pb-24 sm:p-6 sm:pb-24 lg:pb-6">
         <Suspense fallback={<Loading />}>
           <Outlet />

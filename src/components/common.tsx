@@ -3,7 +3,7 @@ import { Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n'
 import { useAccounts, useData, useItems, useParties, useWarehouses } from '@/lib/data'
-import { kg, money, num, qty } from '@/lib/format'
+import { kg, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { lotOrigin, type Account, type ItemCategory, type Lot } from '@/lib/types'
 import { Button } from './ui/button'
@@ -159,4 +159,3 @@ export function PrintButton() {
   )
 }
 
-export const qtyHint = (kgValue: unknown, bagsValue: unknown) => `${qty(bagsValue)} ${i18n.t('unit.bags')} · ${kg(kgValue)}`

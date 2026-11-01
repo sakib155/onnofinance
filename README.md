@@ -4,12 +4,12 @@ Business management for a rice mill and rice trading company: purchases, milling
 
 ## What it covers
 
-- **Trading**: purchases from suppliers (bags, gross weight, moisture/bag deductions, broker commission, transport and labour), sales invoices with PDF, customer and supplier returns.
-- **Mill**: production batches through soaking/parboiling → drying → milling, with dates, weights, moisture and costs at each stage. Finishing a batch puts rice and by-products (broken rice, bran, husk) into stock, with the batch cost shared between them.
+- **Trading**: purchases from suppliers (bags, gross weight, moisture/bag deductions, broker commission, transport and labour), sales orders with the customer's PO number, sales invoices and challans with PDF, customer and supplier returns.
+- **Mill**: two sections. The dryer turns paddy into unsorted rice; the sorter turns unsorted rice (own or bought) into sorted rice. Each batch records its input and output times, the lots and suppliers it used, and its costs. By-products (husk, bran, broken rice…) are valued at their current price and the main product carries the rest of the cost. A live mill floor page and a supplier yield report show what each supplier's material really made.
 - **Stock**: every purchase and batch output is a lot with its own cost per kg. Sales and milling take from the oldest lot first unless a lot is picked. Godown transfers, shortages, gains and opening stock.
 - **Money**: receipts, payments, expenses, other income, cash↔bank transfers, owner capital and drawings, loans taken and given, cheques (pending / cleared / bounced). Payments settle the oldest unpaid bills first, or the ones you pick.
 - **Reports**: dashboard, cash and bank books, cash summary, party statements, dues with ageing, lot profit, batch yield and cost, profit & loss, balance sheet, trial balance, stock summary.
-- **Users**: Admin, Accountant, Operator (no money or profit figures), Viewer (read-only). Every change is recorded in an audit log.
+- **Users**: Super admin (manages the team), Admin, Accountant, Purchaser, Sales, Production, Operator and Viewer, each limited to its own work. Every change is recorded in an audit log.
 
 Behind the screens every document posts double-entry journal lines, so the books, party balances and stock value always agree.
 
@@ -29,7 +29,11 @@ Behind the screens every document posts double-entry journal lines, so the books
    ```bash
    npm run dev
    ```
-5. Create an account. The first account becomes the admin; later accounts start as viewers until the admin gives them a role under Setup → Team.
+5. Create an account. The first account becomes the super admin. Later sign-ups wait, seeing nothing, until the super admin approves them under Setup → Team (or invites their email first).
+
+## Updating the database
+
+Each change to the database is a new file in `supabase/migrations/`. Run only the new file in the Supabase SQL editor; every migration is safe to run again. The newest migration sets `schema_version()`, and `SCHEMA_VERSION` in `src/app/Layout.tsx` must match it: when the database is behind, the app shows a red bar instead of quietly showing wrong data.
 
 ## Scripts
 

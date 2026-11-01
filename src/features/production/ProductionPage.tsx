@@ -19,8 +19,19 @@ export function useBatches(status?: string, kind?: BatchKind) {
     let q = supabase.from('v_production_batches').select('*').order('start_date', { ascending: false }).order('created_at', { ascending: false })
     if (status) q = q.eq('status', status)
     if (kind) q = q.eq('kind', kind)
-    return q
+    // shortcut: lists the newest 300 batches only; add a date range when older ones are needed here
+    return q.limit(300)
   })
+}
+
+type SectionStats = {
+  running: number
+  running_kg: number
+  completed: number
+  completed_kg: number
+  avg_yield_pct: number | null
+  avg_cost_per_kg: number | null
+  avg_minutes: number | null
 }
 
 export function ProductionPage() {
@@ -32,16 +43,12 @@ export function ProductionPage() {
   const [status, setStatus] = useState('')
   const { data, isLoading } = useBatches(status, kind)
   const rows = data ?? []
-  const running = rows.filter((b) => b.status === 'RUNNING')
-  const done = rows.filter((b) => b.status === 'COMPLETED')
-  const avg = (f: (b: Batch) => number | null) => {
-    const vals = done.map(f).filter((v): v is number => v != null)
-    return vals.length ? vals.reduce((s, v) => s + num(v), 0) / vals.length : null
-  }
-  const avgYield = avg((b) => b.main_yield_pct)
-  const avgCost = avg((b) => b.main_cost_per_kg)
+  // counts and averages over every batch of the section, worked out by the database
+  const { data: stats } = useData<SectionStats>(['section-stats', kind], () => supabase.rpc('section_stats', { p_kind: kind }).single())
+  const avgYield = stats?.avg_yield_pct ?? null
+  const avgCost = stats?.avg_cost_per_kg ?? null
   const showCost = can('books')
-  const avgMinutes = avg((b) => b.minutes_taken)
+  const avgMinutes = stats?.avg_minutes ?? null
   const now = useNow()
 
   return (
@@ -70,8 +77,8 @@ export function ProductionPage() {
         ))}
       </div>
       <div className={clsx(statGrid, 'mb-4', showCost ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
-        <Stat label={t('production.running')} value={running.length} hint={kg(running.reduce((s, b) => s + num(b.input_kg), 0))} />
-        <Stat label={t('production.completed')} value={done.length} hint={kg(done.reduce((s, b) => s + num(b.main_kg), 0))} />
+        <Stat label={t('production.running')} value={num(stats?.running)} hint={kg(stats?.running_kg)} />
+        <Stat label={t('production.completed')} value={num(stats?.completed)} hint={kg(stats?.completed_kg)} />
         <Stat label={t('production.avgTime')} value={avgMinutes != null ? duration(avgMinutes) : '—'} hint={t(`production.avgTimeHint.${kind}`)} />
         <Stat label={t('production.avgYield')} value={avgYield != null ? `${qty(avgYield)}%` : '—'} hint={t(`production.yieldMeans.${kind}`)} />
         {showCost && <Stat label={t(`production.mainCostPerKg.${kind}`)} value={avgCost != null ? money(avgCost) : '—'} hint={t('production.average')} />}

@@ -1,7 +1,11 @@
 import type { en } from './en'
 
 export const bn: typeof en = {
-  app: { name: 'অন্ন', tagline: 'রাইস মিল ও চালের ব্যবসা' },
+  app: {
+    name: 'অন্ন',
+    tagline: 'রাইস মিল ও চালের ব্যবসা',
+    dbBehind: 'ডাটাবেসে একটি আপডেট চালানো হয়নি। অ্যাডমিনকে Supabase-এর SQL এডিটরে সর্বশেষ মাইগ্রেশন চালাতে বলুন।',
+  },
   nav: {
     dashboard: 'ড্যাশবোর্ড',
     home: 'হোম',

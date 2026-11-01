@@ -1,5 +1,9 @@
 export const en = {
-  app: { name: 'Onno', tagline: 'Rice mill & trading' },
+  app: {
+    name: 'Onno',
+    tagline: 'Rice mill & trading',
+    dbBehind: 'The database is missing an update. Ask the admin to run the newest migration in the Supabase SQL editor.',
+  },
   nav: {
     dashboard: 'Dashboard',
     home: 'Home',

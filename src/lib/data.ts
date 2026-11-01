@@ -54,8 +54,3 @@ export function useMethodFor() {
   return (accountId: string, current: string) =>
     current === 'CHEQUE' ? current : data?.find((a) => a.id === accountId)?.subtype === 'BANK' ? 'BANK' : 'CASH'
 }
-
-export function useMoneyAccounts() {
-  const q = useAccounts()
-  return { ...q, data: q.data?.filter((a) => (a.subtype === 'CASH' || a.subtype === 'BANK') && a.is_active) }
-}

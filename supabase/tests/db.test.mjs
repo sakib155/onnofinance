@@ -442,6 +442,32 @@ check('suppliers\' rice cost adds up to the batches\' rice cost', Math.abs(sy.re
 const febSort = await q(`select origin_type, supplier_name, material_kg from report_supplier_yield('2026-02-01', '2026-02-28') where kind = 'SORTER' order by material_kg desc`)
 check('sorter rows: our own dryer output and the bought unsorted rice', febSort.length === 2 && febSort[0].origin_type === 'PRODUCTION' && !febSort[0].supplier_name
   && febSort[1].supplier_name === 'Other Mill' && +febSort[1].material_kg === 500, JSON.stringify(febSort))
+
+// A picked lot must be the line's item and godown (lotGood is paddy in the first godown)
+await expectError('a lot from another godown is refused', () => rpc('save_sale', { sale_date: '2026-04-05', customer_id: cus, warehouse_id: wh2,
+  lines: [{ item_id: paddy, lot_id: lotGood, qty_kg: 10, rate: 30 }] }), 'Not enough stock')
+await expectError('a lot of another item is refused', () => rpc('save_sale', { sale_date: '2026-04-05', customer_id: cus, warehouse_id: wh,
+  lines: [{ item_id: unsorted, lot_id: lotGood, qty_kg: 10, rate: 30 }] }), 'Not enough stock')
+// A typed split settles only the party's own bills, each up to what it still owes
+await rpc('save_purchase', { purchase_date: '2026-04-05', supplier_id: cheapCo, warehouse_id: wh, lines: [{ item_id: paddy, gross_kg: 100, rate: 25 }] })
+const sSplit = await rpc('save_sale', { sale_date: '2026-04-06', customer_id: cus, warehouse_id: wh, lines: [{ item_id: paddy, qty_kg: 100, rate: 50 }] })
+const rSplit = await rpc('save_money_txn', { txn_date: '2026-04-06', txn_type: 'RECEIPT', party_id: cus, money_account_id: cash, amount: 10000,
+  allocations: [{ sale_id: s3, amount: 3000 }, { sale_id: sSplit, amount: 10000 }] })
+const split = await q(`select sale_id, amount from bill_settlements where money_txn_id = $1`, [rSplit])
+check('a split cannot settle another customer\'s bill', !split.some((x) => x.sale_id === s3), JSON.stringify(split))
+check('a split settles a bill only up to what it owes', split.length === 1 && +split[0].amount === 5000
+  && +(await one(`select due_amount from v_sale_dues where id = $1`, [sSplit])).due_amount === 0, JSON.stringify(split))
+check('the database reports its migration number', +(await one(`select public.schema_version() v`)).v === 20)
+check('server days are Dhaka days', (await one(`select current_setting('TimeZone') tz`)).tz === 'Asia/Dhaka')
+for (const kind of ['DRYER', 'SORTER']) {
+  const st = await one(`select * from section_stats($1)`, [kind])
+  const want = await one(`select count(*) filter (where status = 'COMPLETED') c, avg(main_yield_pct) filter (where status = 'COMPLETED') y
+                          from v_production_batches where kind = $1`, [kind])
+  check(`${kind} figures cover every batch`, +st.completed === +want.c && +st.completed > 0 && Math.abs(+st.avg_yield_pct - +want.y) < 1e-9, JSON.stringify(st))
+}
+const priced = await one(`select count(*) c from v_item_price_changed v
+  where v.changed_at = (select max(changed_at) from item_price_history h where h.item_id = v.item_id)`)
+check('each item shows its latest price change', +priced.c > 0 && +priced.c === +(await one(`select count(distinct item_id) c from item_price_history`)).c)
 await db.exec(`reset role`)
 
 const audit = +(await one(`select count(*) c from audit_log`)).c

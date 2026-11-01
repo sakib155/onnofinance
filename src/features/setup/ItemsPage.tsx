@@ -123,7 +123,7 @@ export function ItemsPage() {
   const { data, isLoading } = useItems()
   // when each item's current price was last changed
   const { data: history } = useData<{ item_id: string; changed_at: string }[]>(['price-history'], () =>
-    supabase.from('item_price_history').select('item_id, changed_at').order('changed_at', { ascending: false }),
+    supabase.from('v_item_price_changed').select('item_id, changed_at'),
   )
   const lastChanged = (id: string) => history?.find((h) => h.item_id === id)?.changed_at
   const [editing, setEditing] = useState<Item | null | undefined>(undefined)

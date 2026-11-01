@@ -50,12 +50,6 @@ export function yearStart(d = new Date()) {
   return iso(new Date(d.getFullYear(), 0, 1))
 }
 
-// Party balance in words: positive = they owe us
-export function balanceLabel(v: unknown) {
-  const n = num(v)
-  if (Math.abs(n) < 0.005) return i18n.t('balance.settled')
-  return n > 0 ? i18n.t('balance.receivable') : i18n.t('balance.payable')
-}
 
 // Date and time for a <input type="datetime-local">, on this device's clock: "2026-10-18T10:15"
 export function localDateTime(d = new Date()) {

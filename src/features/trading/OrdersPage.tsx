@@ -15,7 +15,7 @@ import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
 import { rpc, useData, useItems, useSave } from '@/lib/data'
-import { date, kg, money, num, qty, today } from '@/lib/format'
+import { date, iso, kg, money, num, qty, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import type { Item, RateUnit } from '@/lib/types'
 import { LineCard, LineCardField } from './LineCard'
@@ -119,7 +119,13 @@ export function OrdersPage() {
   const [filter, setFilter] = useState<Filter>('ACTIVE')
   const [search, setSearch] = useState('')
   const { data, isLoading } = useData<OrderRow[]>(['orders', 'all'], () =>
-    supabase.from('v_sales_orders').select('*').order('order_date', { ascending: false }).order('created_at', { ascending: false }),
+    // every open order, plus closed ones from the last year (the server sends at most 1000 rows)
+    supabase
+      .from('v_sales_orders')
+      .select('*')
+      .or(`status.eq.OPEN,order_date.gte.${iso(new Date(Date.now() - 365 * 86_400_000))}`)
+      .order('order_date', { ascending: false })
+      .order('created_at', { ascending: false }),
   )
   const all = data ?? []
   const active = all.filter((o) => o.status === 'OPEN' && o.progress !== 'DELIVERED')

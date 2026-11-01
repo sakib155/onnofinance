@@ -18,7 +18,8 @@ export function ChequesPage() {
   const toast = useToast()
   const [status, setStatus] = useState('PENDING')
   const { data, isLoading } = useData<MoneyTxn[]>(['cheques', status], () => {
-    let q = supabase.from('v_money_txns').select('*').eq('method', 'CHEQUE').order('cheque_date', { ascending: true })
+    // "All" shows the newest first, so the 1000-row cap drops old cheques rather than new ones
+    let q = supabase.from('v_money_txns').select('*').eq('method', 'CHEQUE').order('cheque_date', { ascending: Boolean(status) })
     if (status) q = q.eq('cheque_status', status)
     return q
   })
