@@ -24,6 +24,11 @@ export type SaleForm = {
   note: string
 }
 
+// The form takes the price of a 50 kg bag; sales are stored and calculated per kg.
+const BAG_KG = 50
+export const kgRateFromBag = (bag: number) => bag / BAG_KG
+export const bagRateFromKg = (perKg: number) => Number((perKg * BAG_KG).toFixed(4))
+
 export const emptyForm: SaleForm = { date: '', product: '', party: '', kg: '', rate: '', cost: '', description: '', note: '' }
 
 export const roll = (lines: Sale[]) => {

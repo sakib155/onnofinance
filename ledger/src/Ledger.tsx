@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { clientFromHash, clientsOf, emptyForm, isClient, kgs, missingOf, monthName, NOT_NAMED, pct, rate, roll, sortLines, taka, today, validate, type Sale, type SaleForm } from './logic.ts'
+import { bagRateFromKg, clientFromHash, clientsOf, emptyForm, isClient, kgRateFromBag, kgs, missingOf, monthName, NOT_NAMED, pct, rate, roll, sortLines, taka, today, validate, type Sale, type SaleForm } from './logic.ts'
 import { supabase } from './supabase.ts'
 
 const PAGE = 1000
@@ -117,7 +117,7 @@ export function Ledger({ email }: { email: string }) {
       product: s.product === NOT_NAMED ? '' : s.product,
       party: s.party === NOT_NAMED ? '' : s.party,
       kg: String(s.kg),
-      rate: String(s.rate),
+      rate: String(bagRateFromKg(s.rate)),
       cost: String(s.cost),
       description: s.description,
       note: s.note,
@@ -137,7 +137,7 @@ export function Ledger({ email }: { email: string }) {
       product: form.product.trim(),
       party: form.party.trim(),
       kg: Number(form.kg),
-      rate: Number(form.rate),
+      rate: kgRateFromBag(Number(form.rate)),
       cost: Number(form.cost),
       description: form.description.trim(),
       note: form.note.trim(),
@@ -171,7 +171,7 @@ export function Ledger({ email }: { email: string }) {
   }
 
   const kg = Number(form.kg)
-  const sell = Number(form.rate)
+  const sell = kgRateFromBag(Number(form.rate))
   const previewReady = kg > 0 && sell > 0 && form.cost !== ''
   const previewRev = kg * sell
   const previewGp = previewRev - kg * Number(form.cost)
@@ -266,7 +266,7 @@ export function Ledger({ email }: { email: string }) {
               <input id="s-kg" type="number" min="0" step="any" inputMode="decimal" value={form.kg} onChange={set('kg')} />
             </label>
             <label>
-              Sell rate (৳/kg)
+              Sell rate (৳/50 kg bag)
               <input id="s-rate" type="number" min="0" step="any" inputMode="decimal" value={form.rate} onChange={set('rate')} />
             </label>
             <label>
@@ -283,8 +283,8 @@ export function Ledger({ email }: { email: string }) {
             </label>
             <div className={'preview wide' + (previewReady && previewGp < 0 ? ' bad' : '')} aria-live="polite">
               {previewReady
-                ? `Revenue ${taka(previewRev)}, gross profit ${taka(previewGp)} (${pct(previewGp / previewRev)})${previewGp < 0 ? '. This sale is below cost.' : ''}`
-                : 'Enter kg, rate and cost to see the profit.'}
+                ? `${rate(sell)} per kg. Revenue ${taka(previewRev)}, gross profit ${taka(previewGp)} (${pct(previewGp / previewRev)})${previewGp < 0 ? '. This sale is below cost.' : ''}`
+                : 'Enter kg, bag rate and cost to see the profit.'}
             </div>
             <div className="actions wide">
               <button className="primary" type="submit" disabled={saving}>

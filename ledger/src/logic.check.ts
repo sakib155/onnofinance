@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { clientFromHash, clientsOf, emptyForm, isClient, missingOf, monthName, pct, roll, sortLines, taka, today, validate, type Sale } from './logic.ts'
+import { bagRateFromKg, clientFromHash, clientsOf, emptyForm, isClient, kgRateFromBag, missingOf, monthName, pct, roll, sortLines, taka, today, validate, type Sale } from './logic.ts'
 
 const sale = (over: Partial<Sale>): Sale => ({ id: 'a', month: '2026-09', date: '2026-09-01', description: '', product: 'Katari', party: 'Test Buyer', kg: 1000, rate: 70, cost: 75, note: '', ...over })
 
@@ -22,6 +22,10 @@ assert.equal(book.filter((s) => isClient(s, 'BUYER ONE')).length, 3)
 assert.equal(clientFromHash('#client=Buyer%20One'), 'Buyer One')
 assert.equal(clientFromHash('#client=%E0%A4%A'), null)
 assert.equal(clientFromHash(''), null)
+
+assert.equal(kgRateFromBag(3700), 74)
+assert.equal(roll([sale({ kg: 20000, rate: kgRateFromBag(3700), cost: 0 })]).revenue, 1480000)
+for (const r of [73.51, 74.7, 44.4, 38.2, 192, 74.8]) assert.equal(kgRateFromBag(bagRateFromKg(r)), r)
 
 const good = { ...emptyForm, date: '2026-11-01', product: 'Katari', party: 'Test Buyer', kg: '1000', rate: '70', cost: '0' }
 assert.equal(validate(good, undefined, '2026-11-02'), '')
