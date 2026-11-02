@@ -1,0 +1,26 @@
+{
+  "name": "onno-ledger",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "node --experimental-strip-types src/logic.check.ts && node setup.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.1"
+  }
+}
