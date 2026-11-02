@@ -31,6 +31,7 @@ export function Ledger({ email }: { email: string }) {
   const [confirming, setConfirming] = useState<string | null>(null)
   const [status, setStatus] = useState({ text: '', err: false })
   const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false) // Phones only: the form stays hidden until asked for. Larger screens always show it.
   const formRef = useRef<HTMLElement>(null)
 
   const load = useCallback(async () => {
@@ -63,6 +64,16 @@ export function Ledger({ email }: { email: string }) {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
+  useEffect(() => {
+    if (formOpen && window.matchMedia('(max-width: 640px)').matches) formRef.current?.scrollIntoView({ block: 'start' })
+  }, [formOpen])
+
+  useEffect(() => {
+    if (!status.text || status.err) return
+    const timer = setTimeout(() => setStatus({ text: '', err: false }), 5000)
+    return () => clearTimeout(timer)
+  }, [status])
+
   const lines = useMemo(() => sales ?? [], [sales])
   const months = useMemo(() => [...new Set(lines.map((s) => s.month))].sort().reverse(), [lines])
   const activeMonth = month !== 'all' && months.includes(month) ? month : 'all'
@@ -87,6 +98,7 @@ export function Ledger({ email }: { email: string }) {
   const clientField = client === null || client === NOT_NAMED ? '' : client
   const clearForm = () => {
     setEditing(null)
+    setFormOpen(false)
     setForm({ ...emptyForm, party: clientField })
   }
   const openClient = (name: string) => {
@@ -111,6 +123,7 @@ export function Ledger({ email }: { email: string }) {
       note: s.note,
     })
     say('')
+    setFormOpen(true)
     formRef.current?.scrollIntoView({ block: 'nearest' })
   }
 
@@ -233,7 +246,7 @@ export function Ledger({ email }: { email: string }) {
       )}
 
       <div className="main">
-        <section className="panel" ref={formRef}>
+        <section className={'panel formpanel' + (formOpen ? '' : ' closed')} ref={formRef}>
           <h2>{editing ? `Edit sale in ${monthName(editing.month)}` : 'Add a sale'}</h2>
           <form className="entry" onSubmit={save} noValidate>
             <label>
@@ -277,9 +290,13 @@ export function Ledger({ email }: { email: string }) {
               <button className="primary" type="submit" disabled={saving}>
                 {editing ? 'Save changes' : 'Add sale'}
               </button>
-              {editing && (
+              {editing ? (
                 <button type="button" onClick={() => { clearForm(); say('') }}>
                   Cancel edit
+                </button>
+              ) : (
+                <button type="button" className="phoneonly" onClick={() => setFormOpen(false)}>
+                  Close
                 </button>
               )}
             </div>
@@ -300,7 +317,7 @@ export function Ledger({ email }: { email: string }) {
             </label>
           </div>
           <div className="scroll tall">
-            <table>
+            <table className="cards">
               <thead>
                 <tr>
                   <th>Date</th><th>Product</th><th>Name</th><th className="n">Kg</th><th className="n">Rate</th><th className="n">Cost</th><th className="n">Revenue</th><th className="n">Gross profit</th><th>Details</th><th><span className="sr">Actions</span></th>
@@ -311,22 +328,22 @@ export function Ledger({ email }: { email: string }) {
                   const r = roll([s])
                   return (
                     <tr key={s.id}>
-                      <td className="nowrap">{s.date ?? '—'}</td>
-                      <td>{s.product}</td>
-                      <td>
+                      <td className="nowrap" data-label="Date">{s.date ?? '—'}</td>
+                      <td className="title">{s.product}</td>
+                      <td data-label="Name">
                         {client === null ? <button type="button" className="link" onClick={() => openClient(s.party)}>{s.party}</button> : s.party}
                       </td>
-                      <td className="n">{kgs(s.kg)}</td>
-                      <td className="n">{rate(s.rate)}</td>
-                      <td className="n">{rate(s.cost)}</td>
-                      <td className="n">{taka(r.revenue)}</td>
-                      <td className={'n' + (r.gp < 0 ? ' bad' : '')}>{taka(r.gp)}</td>
-                      <td>
+                      <td className="n" data-label="Kg">{kgs(s.kg)}</td>
+                      <td className="n" data-label="Rate">{rate(s.rate)}</td>
+                      <td className="n" data-label="Cost">{rate(s.cost)}</td>
+                      <td className="n" data-label="Revenue">{taka(r.revenue)}</td>
+                      <td className={'n' + (r.gp < 0 ? ' bad' : '')} data-label="Gross profit">{taka(r.gp)}</td>
+                      <td className="full">
                         {missingOf(s).map((m) => <span className="chip" key={m}>{m}</span>)}
                         {s.description && <span className="note">{s.description}</span>}
                         {s.note && <span className="note">{s.note}</span>}
                       </td>
-                      <td className="nowrap">
+                      <td className="nowrap full">
                         {confirming === s.id ? (
                           <>
                             <button type="button" className="small danger" onClick={() => remove(s.id)}>Delete this sale</button>{' '}
@@ -366,7 +383,7 @@ export function Ledger({ email }: { email: string }) {
           {client === null ? 'A new month appears when you add its first sale. The overhead amount applies to every month listed.' : 'Gross profit from this customer. Overhead is not split between customers.'}
         </p>
         <div className="scroll">
-          <table>
+          <table className="cards">
             <thead>
               <tr>
                 <th>Month</th><th className="n">Kg</th><th className="n">Revenue</th><th className="n">COGS</th><th className="n">Gross profit</th>
@@ -379,19 +396,19 @@ export function Ledger({ email }: { email: string }) {
                 const n = r.gp - overhead
                 return (
                   <tr key={m}>
-                    <td className="nowrap">{monthName(m)}</td>
-                    <td className="n">{kgs(r.kg)}</td>
-                    <td className="n">{taka(r.revenue)}</td>
-                    <td className="n">{taka(r.cogs)}</td>
-                    <td className="n">{taka(r.gp)}</td>
+                    <td className="nowrap title">{monthName(m)}</td>
+                    <td className="n" data-label="Kg">{kgs(r.kg)}</td>
+                    <td className="n" data-label="Revenue">{taka(r.revenue)}</td>
+                    <td className="n" data-label="COGS">{taka(r.cogs)}</td>
+                    <td className="n" data-label="Gross profit">{taka(r.gp)}</td>
                     {client === null ? (
                       <>
-                        <td className="n">{taka(overhead)}</td>
-                        <td className={'n' + (n < 0 ? ' bad' : '')}>{taka(n)}</td>
-                        <td className={'n' + (n < 0 ? ' bad' : '')}>{pct(n / r.revenue)}</td>
+                        <td className="n" data-label="Overhead">{taka(overhead)}</td>
+                        <td className={'n' + (n < 0 ? ' bad' : '')} data-label="Net profit">{taka(n)}</td>
+                        <td className={'n' + (n < 0 ? ' bad' : '')} data-label="Net margin">{pct(n / r.revenue)}</td>
                       </>
                     ) : (
-                      <td className={'n' + (r.gp < 0 ? ' bad' : '')}>{pct(r.gp / r.revenue)}</td>
+                      <td className={'n' + (r.gp < 0 ? ' bad' : '')} data-label="Gross margin">{pct(r.gp / r.revenue)}</td>
                     )}
                   </tr>
                 )
@@ -405,7 +422,7 @@ export function Ledger({ email }: { email: string }) {
         <h2>Products</h2>
         <p className="hint">For the months shown above. The dark mark on each bar is the {(target * 100).toFixed(0)}% margin target from your workbook.</p>
         <div className="scroll">
-          <table>
+          <table className="cards">
             <thead>
               <tr>
                 <th>Product</th><th className="n">Kg</th><th className="n">Avg rate</th><th className="n">Avg cost</th><th className="n">Revenue</th><th className="n">Gross profit</th><th className="n">Margin</th><th>Against target</th>
@@ -416,14 +433,14 @@ export function Ledger({ email }: { email: string }) {
                 const m = p.gp / p.revenue
                 return (
                   <tr key={p.name}>
-                    <td>{p.name}</td>
-                    <td className="n">{kgs(p.kg)}</td>
-                    <td className="n">{rate(p.revenue / p.kg)}</td>
-                    <td className="n">{rate(p.cogs / p.kg)}</td>
-                    <td className="n">{taka(p.revenue)}</td>
-                    <td className={'n' + (p.gp < 0 ? ' bad' : '')}>{taka(p.gp)}</td>
-                    <td className={'n' + (m < 0 ? ' bad' : '')}>{pct(m)}</td>
-                    <td>
+                    <td className="title">{p.name}</td>
+                    <td className="n" data-label="Kg">{kgs(p.kg)}</td>
+                    <td className="n" data-label="Avg rate">{rate(p.revenue / p.kg)}</td>
+                    <td className="n" data-label="Avg cost">{rate(p.cogs / p.kg)}</td>
+                    <td className="n" data-label="Revenue">{taka(p.revenue)}</td>
+                    <td className={'n' + (p.gp < 0 ? ' bad' : '')} data-label="Gross profit">{taka(p.gp)}</td>
+                    <td className={'n' + (m < 0 ? ' bad' : '')} data-label="Margin">{pct(m)}</td>
+                    <td className="full">
                       <div className="bar">
                         <i style={{ width: `${Math.max(0, Math.min(1, m / barMax)) * 100}%` }} />
                         <u style={{ left: `${(target / barMax) * 100}%` }} />
@@ -436,6 +453,19 @@ export function Ledger({ email }: { email: string }) {
           </table>
         </div>
       </section>
+
+      {!formOpen && status.text && (
+        <p className={'status toast phoneonly' + (status.err ? ' err' : '')} role="status">
+          {status.text}
+        </p>
+      )}
+      {!formOpen && (
+        <div className="addbar phoneonly">
+          <button type="button" className="primary" onClick={() => { say(''); setFormOpen(true) }}>
+            + Add sale{client !== null && client !== NOT_NAMED ? ` for ${client}` : ''}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
