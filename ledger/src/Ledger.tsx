@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { emptyForm, kgs, missingOf, monthName, NOT_NAMED, pct, rate, roll, sortLines, taka, today, validate, type Sale, type SaleForm } from './logic.ts'
+import { clientFromHash, clientsOf, emptyForm, isClient, kgs, missingOf, monthName, NOT_NAMED, pct, rate, roll, sortLines, taka, today, validate, type Sale, type SaleForm } from './logic.ts'
 import { supabase } from './supabase.ts'
 
 const PAGE = 1000
@@ -24,6 +24,7 @@ export function Ledger({ email }: { email: string }) {
   const [overheadInput, setOverheadInput] = useState('')
   const [loadFailed, setLoadFailed] = useState(false)
   const [month, setMonth] = useState('all')
+  const [clientName, setClientName] = useState(() => clientFromHash(location.hash))
   const [onlyMissing, setOnlyMissing] = useState(false)
   const [form, setForm] = useState<SaleForm>(emptyForm)
   const [editing, setEditing] = useState<Sale | null>(null)
@@ -52,10 +53,24 @@ export function Ledger({ email }: { email: string }) {
     return () => window.removeEventListener('focus', load)
   }, [load])
 
+  // The chosen customer lives in the address, so the phone's back button returns to all customers.
+  useEffect(() => {
+    const onHash = () => {
+      setClientName(clientFromHash(location.hash))
+      window.scrollTo(0, 0)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
   const lines = useMemo(() => sales ?? [], [sales])
   const months = useMemo(() => [...new Set(lines.map((s) => s.month))].sort().reverse(), [lines])
   const activeMonth = month !== 'all' && months.includes(month) ? month : 'all'
-  const scoped = activeMonth === 'all' ? lines : lines.filter((s) => s.month === activeMonth)
+  const inMonth = activeMonth === 'all' ? lines : lines.filter((s) => s.month === activeMonth)
+  const clients = clientsOf(inMonth)
+  const client = clientName !== null ? lines.find((s) => isClient(s, clientName))?.party ?? null : null
+  const clientLines = client === null ? lines : lines.filter((s) => isClient(s, client))
+  const scoped = client === null ? inMonth : inMonth.filter((s) => isClient(s, client))
   const total = roll(scoped)
   const overheadTotal = overhead * new Set(scoped.map((s) => s.month)).size
   const net = total.gp - overheadTotal
@@ -69,10 +84,19 @@ export function Ledger({ email }: { email: string }) {
   const barMax = Math.max(target * 1.25, 0.01)
   const set = (key: keyof SaleForm) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }))
   const say = (text: string, err = false) => setStatus({ text, err })
+  const clientField = client === null || client === NOT_NAMED ? '' : client
   const clearForm = () => {
     setEditing(null)
-    setForm(emptyForm)
+    setForm({ ...emptyForm, party: clientField })
   }
+  const openClient = (name: string) => {
+    location.hash = 'client=' + encodeURIComponent(name)
+  }
+
+  // New sales added from a customer's page start with that customer filled in.
+  useEffect(() => {
+    if (!editing) setForm((f) => ({ ...f, party: clientField }))
+  }, [clientField])
 
   const startEdit = (s: Sale) => {
     setEditing(s)
@@ -164,14 +188,49 @@ export function Ledger({ email }: { email: string }) {
         </label>
       </header>
 
-      <section className="tiles" aria-label="Summary">
-        <Tile label="Revenue" value={taka(total.revenue)} />
-        <Tile label="Gross profit" value={taka(total.gp)} />
-        <Tile label="Fixed overhead" value={taka(overheadTotal)} />
-        <Tile label="Net profit" value={taka(net)} />
-        <Tile label="Net margin" value={pct(net / total.revenue)} />
-        <Tile label="Kg sold" value={kgs(total.kg)} />
-      </section>
+      {client !== null && (
+        <div className="clienthead">
+          <button type="button" onClick={() => { location.hash = '' }}>← All customers</button>
+          <h2>{client}</h2>
+        </div>
+      )}
+
+      {client === null ? (
+        <section className="tiles" aria-label="Summary">
+          <Tile label="Revenue" value={taka(total.revenue)} />
+          <Tile label="Gross profit" value={taka(total.gp)} />
+          <Tile label="Fixed overhead" value={taka(overheadTotal)} />
+          <Tile label="Net profit" value={taka(net)} />
+          <Tile label="Net margin" value={pct(net / total.revenue)} />
+          <Tile label="Kg sold" value={kgs(total.kg)} />
+        </section>
+      ) : (
+        <section className="tiles" aria-label={`Summary for ${client}`}>
+          <Tile label="Revenue" value={taka(total.revenue)} />
+          <Tile label="Gross profit" value={taka(total.gp)} />
+          <Tile label="Gross margin" value={pct(total.gp / total.revenue)} />
+          <Tile label="Kg sold" value={kgs(total.kg)} />
+          <Tile label="Avg rate" value={total.kg ? rate(total.revenue / total.kg) : '—'} />
+          <Tile label="Sales lines" value={String(scoped.length)} />
+        </section>
+      )}
+
+      {client === null && clients.length > 0 && (
+        <section className="panel">
+          <h2>Customers</h2>
+          <div className="boxes">
+            {clients.map((c) => (
+              <button type="button" className="box" key={c.name} onClick={() => openClient(c.name)}>
+                <strong>{c.name}</strong>
+                <b>{taka(c.revenue)}</b>
+                <span className={c.gp < 0 ? 'bad' : ''}>Profit {taka(c.gp)} · {pct(c.gp / c.revenue)}</span>
+                <span>{kgs(c.kg)} kg · {c.sales} {c.sales === 1 ? 'sale' : 'sales'}</span>
+                <span>{c.lastDate ? `Last sale ${c.lastDate}` : 'No dated sales'}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="main">
         <section className="panel" ref={formRef}>
@@ -254,7 +313,9 @@ export function Ledger({ email }: { email: string }) {
                     <tr key={s.id}>
                       <td className="nowrap">{s.date ?? '—'}</td>
                       <td>{s.product}</td>
-                      <td>{s.party}</td>
+                      <td>
+                        {client === null ? <button type="button" className="link" onClick={() => openClient(s.party)}>{s.party}</button> : s.party}
+                      </td>
                       <td className="n">{kgs(s.kg)}</td>
                       <td className="n">{rate(s.rate)}</td>
                       <td className="n">{rate(s.cost)}</td>
@@ -283,7 +344,7 @@ export function Ledger({ email }: { email: string }) {
                 })}
               </tbody>
             </table>
-            {sales && !shown.length && <p className="empty">{onlyMissing ? 'No lines are missing details.' : 'Use the form to add the first sale.'}</p>}
+            {sales && !shown.length && <p className="empty">{onlyMissing ? 'No lines are missing details.' : client === null ? 'Use the form to add the first sale.' : 'No sales for this customer in this month.'}</p>}
           </div>
         </section>
       </div>
@@ -291,25 +352,30 @@ export function Ledger({ email }: { email: string }) {
       <section className="panel">
         <div className="head">
           <h2>Month by month</h2>
-          <form className="ohrow" onSubmit={saveOverhead} noValidate>
-            <label>
-              Overhead per month (৳)
-              <input id="s-overhead" type="number" min="0" step="any" value={overheadInput} onChange={(e) => setOverheadInput(e.target.value)} />
-            </label>
-            <button type="submit">Save overhead</button>
-          </form>
+          {client === null && (
+            <form className="ohrow" onSubmit={saveOverhead} noValidate>
+              <label>
+                Overhead per month (৳)
+                <input id="s-overhead" type="number" min="0" step="any" value={overheadInput} onChange={(e) => setOverheadInput(e.target.value)} />
+              </label>
+              <button type="submit">Save overhead</button>
+            </form>
+          )}
         </div>
-        <p className="hint">A new month appears when you add its first sale. The overhead amount applies to every month listed.</p>
+        <p className="hint">
+          {client === null ? 'A new month appears when you add its first sale. The overhead amount applies to every month listed.' : 'Gross profit from this customer. Overhead is not split between customers.'}
+        </p>
         <div className="scroll">
           <table>
             <thead>
               <tr>
-                <th>Month</th><th className="n">Kg</th><th className="n">Revenue</th><th className="n">COGS</th><th className="n">Gross profit</th><th className="n">Overhead</th><th className="n">Net profit</th><th className="n">Net margin</th>
+                <th>Month</th><th className="n">Kg</th><th className="n">Revenue</th><th className="n">COGS</th><th className="n">Gross profit</th>
+                {client === null ? <><th className="n">Overhead</th><th className="n">Net profit</th><th className="n">Net margin</th></> : <th className="n">Gross margin</th>}
               </tr>
             </thead>
             <tbody>
-              {months.map((m) => {
-                const r = roll(lines.filter((s) => s.month === m))
+              {months.filter((m) => clientLines.some((s) => s.month === m)).map((m) => {
+                const r = roll(clientLines.filter((s) => s.month === m))
                 const n = r.gp - overhead
                 return (
                   <tr key={m}>
@@ -318,9 +384,15 @@ export function Ledger({ email }: { email: string }) {
                     <td className="n">{taka(r.revenue)}</td>
                     <td className="n">{taka(r.cogs)}</td>
                     <td className="n">{taka(r.gp)}</td>
-                    <td className="n">{taka(overhead)}</td>
-                    <td className={'n' + (n < 0 ? ' bad' : '')}>{taka(n)}</td>
-                    <td className={'n' + (n < 0 ? ' bad' : '')}>{pct(n / r.revenue)}</td>
+                    {client === null ? (
+                      <>
+                        <td className="n">{taka(overhead)}</td>
+                        <td className={'n' + (n < 0 ? ' bad' : '')}>{taka(n)}</td>
+                        <td className={'n' + (n < 0 ? ' bad' : '')}>{pct(n / r.revenue)}</td>
+                      </>
+                    ) : (
+                      <td className={'n' + (r.gp < 0 ? ' bad' : '')}>{pct(r.gp / r.revenue)}</td>
+                    )}
                   </tr>
                 )
               })}

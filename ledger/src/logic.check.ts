@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { emptyForm, missingOf, monthName, pct, roll, sortLines, taka, today, validate, type Sale } from './logic.ts'
+import { clientFromHash, clientsOf, emptyForm, isClient, missingOf, monthName, pct, roll, sortLines, taka, today, validate, type Sale } from './logic.ts'
 
 const sale = (over: Partial<Sale>): Sale => ({ id: 'a', month: '2026-09', date: '2026-09-01', description: '', product: 'Katari', party: 'Test Buyer', kg: 1000, rate: 70, cost: 75, note: '', ...over })
 
@@ -12,6 +12,16 @@ assert.deepEqual(missingOf(sale({ date: null, product: 'Not named', party: 'Not 
 assert.deepEqual(['x', 'y'].map((id, i) => sale({ id, date: i ? null : '2026-09-02' })).sort(sortLines).map((s) => s.id), ['x', 'y'])
 // Dhaka is UTC+6, so 20:00 UTC is already the next day there.
 assert.equal(today(new Date('2026-11-01T20:00:00Z')), '2026-11-02')
+
+const book = [sale({ id: 'a', party: 'Buyer One', date: '2026-09-01' }), sale({ id: 'b', party: 'buyer one ', date: null }), sale({ id: 'c', party: 'Buyer One', date: '2026-10-03', kg: 2000 }), sale({ id: 'd', party: 'Buyer Two', rate: 500 })]
+const clients = clientsOf(book)
+assert.deepEqual(clients.map((c) => [c.name, c.sales, c.kg, c.lastDate]), [['Buyer Two', 1, 1000, '2026-09-01'], ['Buyer One', 3, 4000, '2026-10-03']])
+assert.equal(clients.reduce((a, c) => a + c.revenue, 0), roll(book).revenue)
+assert.equal(clientsOf([sale({ date: null })])[0].lastDate, '')
+assert.equal(book.filter((s) => isClient(s, 'BUYER ONE')).length, 3)
+assert.equal(clientFromHash('#client=Buyer%20One'), 'Buyer One')
+assert.equal(clientFromHash('#client=%E0%A4%A'), null)
+assert.equal(clientFromHash(''), null)
 
 const good = { ...emptyForm, date: '2026-11-01', product: 'Katari', party: 'Test Buyer', kg: '1000', rate: '70', cost: '0' }
 assert.equal(validate(good, undefined, '2026-11-02'), '')

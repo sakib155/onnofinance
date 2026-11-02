@@ -33,6 +33,33 @@ export const roll = (lines: Sale[]) => {
   return { kg, revenue, cogs, gp: revenue - cogs }
 }
 
+const clientKey = (name: string) => name.trim().toLowerCase()
+export const isClient = (s: Sale, name: string) => clientKey(s.party) === clientKey(name)
+
+// One entry per customer, biggest revenue first. Spelling differences in capital letters count as the same customer.
+export function clientsOf(lines: Sale[]) {
+  const groups = new Map<string, Sale[]>()
+  for (const s of lines) groups.set(clientKey(s.party), [...(groups.get(clientKey(s.party)) ?? []), s])
+  return [...groups.values()]
+    .map((sales) => ({
+      name: sales[0].party,
+      sales: sales.length,
+      lastDate: sales.reduce((a, s) => ((s.date ?? '') > a ? (s.date as string) : a), ''),
+      ...roll(sales),
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+}
+
+export function clientFromHash(hash: string) {
+  const m = hash.match(/^#client=(.+)$/)
+  if (!m) return null
+  try {
+    return decodeURIComponent(m[1])
+  } catch {
+    return null
+  }
+}
+
 export const missingOf = (s: Sale) =>
   [!s.date && 'No date', s.product === NOT_NAMED && 'No product', s.party === NOT_NAMED && 'No name'].filter((x): x is string => Boolean(x))
 

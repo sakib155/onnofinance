@@ -59,3 +59,12 @@ th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align:
 .empty { color: var(--muted); padding: 20px 8px; }
 .ohrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .ohrow label { width: 150px; }
+.clienthead { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.clienthead h2 { font-size: 22px; }
+.boxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+.box { display: flex; flex-direction: column; gap: 2px; text-align: left; font-weight: 400; background: var(--bg); padding: 12px 14px; border-radius: 8px; min-width: 0; }
+.box:hover { border-color: var(--accent); }
+.box strong { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.box b { font: 500 19px/1.3 var(--data); overflow-wrap: anywhere; }
+.box span { font-size: 13px; color: var(--muted); }
+.box span.bad { color: var(--bad); }
