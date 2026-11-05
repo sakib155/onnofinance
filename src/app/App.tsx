@@ -38,6 +38,7 @@ const ItemsPage = lazy(() => import('@/features/setup/ItemsPage').then((m) => ({
 const TeamPage = lazy(() => import('@/features/setup/TeamPage').then((m) => ({ default: m.TeamPage })))
 const WarehousesPage = lazy(() => import('@/features/setup/WarehousesPage').then((m) => ({ default: m.WarehousesPage })))
 const LotsPage = lazy(() => import('@/features/stock/LotsPage').then((m) => ({ default: m.LotsPage })))
+const MixCalculatorPage = lazy(() => import('@/features/stock/MixCalculatorPage').then((m) => ({ default: m.MixCalculatorPage })))
 const StockMovesPage = lazy(() => import('@/features/stock/StockMovesPage').then((m) => ({ default: m.StockMovesPage })))
 const StockPage = lazy(() => import('@/features/stock/StockPage').then((m) => ({ default: m.StockPage })))
 const OrderForm = lazy(() => import('@/features/trading/OrdersPage').then((m) => ({ default: m.OrderForm })))
@@ -142,6 +143,7 @@ export function App() {
                 <Route path="stock" element={<StockPage />} />
                 <Route path="stock/lots" element={<LotsPage />} />
                 <Route path="stock/moves" element={<StockMovesPage />} />
+                <Route path="stock/mix" element={<MixCalculatorPage />} />
                 <Route path="money" element={<Guard perm={VIEW.money}><MoneyPage /></Guard>} />
                 <Route path="money/cheques" element={<Guard perm={VIEW.money}><ChequesPage /></Guard>} />
                 <Route path="money/:id" element={<Guard perm={VIEW.money}><VoucherPage /></Guard>} />

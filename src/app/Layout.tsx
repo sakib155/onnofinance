@@ -7,6 +7,7 @@ import {
   BookOpen,
   Boxes,
   Building2,
+  Calculator,
   ClipboardList,
   Factory,
   FileText,
@@ -72,6 +73,7 @@ const nav: NavGroup[] = [
       { to: '/stock', label: 'nav.stockSummary', icon: Boxes },
       { to: '/stock/lots', label: 'nav.lots', icon: Package },
       { to: '/stock/moves', label: 'nav.stockMoves', icon: Truck },
+      { to: '/stock/mix', label: 'nav.mixCalculator', icon: Calculator },
     ],
   },
   {
