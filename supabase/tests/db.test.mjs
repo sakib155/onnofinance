@@ -209,9 +209,20 @@ check('invoice without order keeps a typed PO number', (await one(`select po_num
   [await rpc('save_sale', { sale_date: '2026-02-24', customer_id: cus, warehouse_id: wh, po_number: ' PO-55 ', lines: [{ item_id: rice, qty_kg: 10, rate: 56 }] })])).po_number === 'PO-55')
 const ord2 = await rpc('save_sales_order', { order_date: '2026-02-20', customer_id: cus, delivery_date: '2026-01-01', lines: [{ item_id: rice, qty_kg: 50 }] })
 check('undelivered order past its date is overdue', (await one(`select overdue from v_sales_orders where id = $1`, [ord2])).overdue === true)
+// Mix estimates: only filled rows are kept, sorting never goes negative, deleting the order removes them
+const mixRows = (rows) => JSON.stringify(rows)
+const mixId = (await one(`select public.save_order_mix($1, $2::jsonb) id`, [ord2, mixRows([{ name: 'A', kg: 150, rate: 3000, sorting: -5 }, { name: 'B', kg: 0, rate: 3400, sorting: 0 }, { kg: 50, rate: 0 }])])).id
+const savedMix = (await one(`select rows from order_mixes where id = $1`, [mixId])).rows
+check('a mix keeps only its filled rows', savedMix.length === 1 && savedMix[0].name === 'A' && +savedMix[0].kg === 150 && +savedMix[0].sorting === 0, JSON.stringify(savedMix))
+await expectError('a mix needs a filled row', () => q(`select public.save_order_mix($1, $2::jsonb)`, [ord2, mixRows([{ kg: 0, rate: 0 }])]), 'at least one item')
+await q(`select public.save_order_mix($1, $2::jsonb)`, [ord2, mixRows([{ kg: 50, rate: 3000 }])])
+await q(`select public.delete_order_mix($1)`, [mixId])
+check('a mix can be deleted', +(await one(`select count(*) c from order_mixes where order_id = $1`, [ord2])).c === 1)
 await q(`select public.set_sales_order_status($1, 'CANCELLED')`, [ord2])
+await expectError('no mix on a cancelled order', () => q(`select public.save_order_mix($1, $2::jsonb)`, [ord2, mixRows([{ kg: 50, rate: 3000 }])]), 'cancelled')
 await q(`select public.delete_sales_order($1)`, [ord2])
 check('empty order can be deleted', !(await one(`select 1 x from sales_orders where id = $1`, [ord2])))
+check('deleting an order removes its mixes', +(await one(`select count(*) c from order_mixes where order_id = $1`, [ord2])).c === 0)
 
 // Money
 const rcv = await rpc('save_money_txn', { txn_date: '2026-02-25', txn_type: 'RECEIPT', party_id: cus, money_account_id: cash, amount: 60000, allocations: null })
@@ -457,7 +468,7 @@ const split = await q(`select sale_id, amount from bill_settlements where money_
 check('a split cannot settle another customer\'s bill', !split.some((x) => x.sale_id === s3), JSON.stringify(split))
 check('a split settles a bill only up to what it owes', split.length === 1 && +split[0].amount === 5000
   && +(await one(`select due_amount from v_sale_dues where id = $1`, [sSplit])).due_amount === 0, JSON.stringify(split))
-check('the database reports its migration number', +(await one(`select public.schema_version() v`)).v === 20)
+check('the database reports its migration number', +(await one(`select public.schema_version() v`)).v === 21)
 check('server days are Dhaka days', (await one(`select current_setting('TimeZone') tz`)).tz === 'Asia/Dhaka')
 for (const kind of ['DRYER', 'SORTER']) {
   const st = await one(`select * from section_stats($1)`, [kind])

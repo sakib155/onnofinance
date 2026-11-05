@@ -183,7 +183,7 @@ function PhoneBar({ onMenu }: { onMenu: () => void }) {
 }
 
 // The migration this app was built for (supabase/migrations); keep it equal to schema_version() in the newest one
-const SCHEMA_VERSION = 20
+const SCHEMA_VERSION = 21
 
 // Red bar when the database is behind the app, so a migration that was not run does not pass for real data
 function SchemaWarning() {

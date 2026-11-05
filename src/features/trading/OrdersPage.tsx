@@ -14,6 +14,7 @@ import { ConfirmModal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { PartyForm } from '@/features/parties/PartyForm'
+import { OrderMixes } from '@/features/trading/OrderMixes'
 import { rpc, useData, useItems, useSave } from '@/lib/data'
 import { date, iso, kg, money, num, qty, today } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -601,6 +602,8 @@ export function OrderView() {
           />
         </Card>
       </div>
+
+      <OrderMixes orderId={o.id} canAdd={o.status !== 'CANCELLED'} />
 
       <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-slate-800">{t('orders.confirmationTitle')}</h2>
