@@ -579,6 +579,7 @@ export const en = {
       perKg: 'Expected rate per kg',
       total: 'Total mix',
       totalCost: 'Total cost',
+      sortingCost: 'Sorting cost',
       onOrder: 'Mix estimate for this order',
       order: 'Open order',
       save: 'Save against order',

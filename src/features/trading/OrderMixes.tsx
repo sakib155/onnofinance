@@ -8,6 +8,7 @@ import { ConfirmModal } from '@/components/ui/modal'
 import { Table } from '@/components/ui/table'
 import { errorMessage, useToast } from '@/components/ui/toast'
 import { mixPrice, rowCost, type MixRow } from '@/features/stock/mix'
+import { MixPdfButton } from '@/features/stock/MixPdf'
 import { rpc, useData, useSave } from '@/lib/data'
 import { date, kg, money, num } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -15,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 type OrderMix = { id: string; created_at: string; rows: (MixRow & { name: string })[] }
 
 // Rice mix estimates saved from the mix calculator
-export function OrderMixes({ orderId, canAdd }: { orderId: string; canAdd: boolean }) {
+export function OrderMixes({ orderId, orderNo, canAdd }: { orderId: string; orderNo: string; canAdd: boolean }) {
   const { t } = useTranslation()
   const can = useCan()
   const toast = useToast()
@@ -54,11 +55,14 @@ export function OrderMixes({ orderId, canAdd }: { orderId: string; canAdd: boole
                     {money(mix.perKg)}/{t('unit.kg')} · {kg(mix.kg)} · {date(m.created_at)}
                   </span>
                 </div>
-                {can('sale') && (
-                  <Button variant="ghost" size="sm" onClick={() => setRemoving(m.id)} aria-label={t('common.delete')} title={t('common.delete')}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  <MixPdfButton rows={m.rows.map((r) => ({ name: r.name, kg: num(r.kg), rate: num(r.rate), sorting: num(r.sorting) }))} orderNo={orderNo} day={m.created_at} />
+                  {can('sale') && (
+                    <Button variant="ghost" size="sm" onClick={() => setRemoving(m.id)} aria-label={t('common.delete')} title={t('common.delete')}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <Table
                 rows={m.rows}

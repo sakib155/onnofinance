@@ -603,7 +603,7 @@ export function OrderView() {
         </Card>
       </div>
 
-      <OrderMixes orderId={o.id} canAdd={o.status !== 'CANCELLED'} />
+      <OrderMixes orderId={o.id} orderNo={o.order_no} canAdd={o.status !== 'CANCELLED'} />
 
       <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-slate-800">{t('orders.confirmationTitle')}</h2>

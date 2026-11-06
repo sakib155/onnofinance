@@ -581,6 +581,7 @@ export const bn: typeof en = {
       perKg: 'প্রত্যাশিত দর (প্রতি কেজি)',
       total: 'মোট মিশ্রণ',
       totalCost: 'মোট খরচ',
+      sortingCost: 'সর্টিং খরচ',
       onOrder: 'এই অর্ডারের মিশ্রণের হিসাব',
       order: 'চলমান অর্ডার',
       save: 'অর্ডারে সংরক্ষণ করুন',

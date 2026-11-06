@@ -13,6 +13,7 @@ import { rpc, useData, useSave } from '@/lib/data'
 import { money, num, qty } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { mixPrice, rowCost } from './mix'
+import { MixPdfButton } from './MixPdf'
 
 const blank = { name: '', kg: '', rate: '', sorting: '' }
 
@@ -39,7 +40,11 @@ export function MixCalculatorPage() {
 
   return (
     <>
-      <PageHeader title={t('stock.mix.title')} subtitle={t('stock.mix.subtitle')} />
+      <PageHeader
+        title={t('stock.mix.title')}
+        subtitle={t('stock.mix.subtitle')}
+        actions={<MixPdfButton rows={rows.map((r) => ({ ...parse(r), name: r.name.trim() }))} orderNo={orders?.find((o) => o.id === order)?.order_no} disabled={mix.kg <= 0} />}
+      />
       <div className="space-y-4">
         <div className={`${statGrid} lg:grid-cols-4`}>
           <Stat label={t('stock.mix.perBag')} value={money(mix.perBag)} />
