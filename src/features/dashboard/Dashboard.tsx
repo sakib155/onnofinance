@@ -90,13 +90,13 @@ function TrendChart({ data, showProfit }: { data: Stats['trend']; showProfit: bo
   const bar = (v: number, x: number, color: string) => (
     <rect x={x} width={3} y={Math.min(y(v), y(0))} height={Math.abs(y(v) - y(0))} fill={color} />
   )
-  const month = (m: string) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short' }).format(new Date(`${m}-01`))
+  const month = (m: string) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short' }).format(new Date(`${m}-01T00:00:00`))
   return (
     <div className="mt-4 text-xs text-slate-500">
       <div className="flex h-48 gap-2">
         <div className="flex w-12 flex-col justify-between text-right tabular-nums">
-          <span>{compact(top)}</span>
-          <span>{compact(bottom)}</span>
+          <span>{compact(top, i18n.language)}</span>
+          <span>{compact(bottom, i18n.language)}</span>
         </div>
         <svg viewBox={`0 0 ${data.length * 10} 100`} preserveAspectRatio="none" className="h-full flex-1 overflow-visible" role="img" aria-label={series.map((s) => s.label).join(', ')}>
           <line x1={0} x2={data.length * 10} y1={y(0)} y2={y(0)} stroke="#cbd5e1" vectorEffect="non-scaling-stroke" />
@@ -139,7 +139,7 @@ function TrendChart({ data, showProfit }: { data: Stats['trend']; showProfit: bo
   )
 }
 
-const compact = (v: number) => new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
+const compact = (v: number, lang: string) => new Intl.NumberFormat(lang === 'bn' ? 'bn-BD' : 'en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
 const pct = (v: number) => `${qty(v, 1)}%`
 // A batch running longer than this is worth a look
 const LONG_BATCH_DAYS = 3

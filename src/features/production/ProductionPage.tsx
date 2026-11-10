@@ -43,7 +43,7 @@ export function ProductionPage() {
   const [status, setStatus] = useState('')
   const { data, isLoading } = useBatches(status, kind)
   const rows = data ?? []
-  // counts and averages over every batch of the section, worked out by the database
+  // counts and averages over every batch of the section, worked out by the database (yield and cost weighted by kg)
   const { data: stats } = useData<SectionStats>(['section-stats', kind], () => supabase.rpc('section_stats', { p_kind: kind }).single())
   const avgYield = stats?.avg_yield_pct ?? null
   const avgCost = stats?.avg_cost_per_kg ?? null
@@ -80,7 +80,7 @@ export function ProductionPage() {
         <Stat label={t('production.running')} value={num(stats?.running)} hint={kg(stats?.running_kg)} />
         <Stat label={t('production.completed')} value={num(stats?.completed)} hint={kg(stats?.completed_kg)} />
         <Stat label={t('production.avgTime')} value={avgMinutes != null ? duration(avgMinutes) : '—'} hint={t(`production.avgTimeHint.${kind}`)} />
-        <Stat label={t('production.avgYield')} value={avgYield != null ? `${qty(avgYield)}%` : '—'} hint={t(`production.yieldMeans.${kind}`)} />
+        <Stat label={t('production.avgYield')} value={avgYield != null ? `${qty(avgYield, 1)}%` : '—'} hint={t(`production.yieldMeans.${kind}`)} />
         {showCost && <Stat label={t(`production.mainCostPerKg.${kind}`)} value={avgCost != null ? money(avgCost) : '—'} hint={t('production.average')} />}
       </div>
       <Card padded={false}>

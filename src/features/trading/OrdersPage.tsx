@@ -131,10 +131,11 @@ export function OrdersPage() {
   const all = data ?? []
   const active = all.filter((o) => o.status === 'OPEN' && o.progress !== 'DELIVERED')
   const q = search.trim().toLowerCase()
-  const rows = (filter === 'ACTIVE' ? active : filter === 'ALL' ? all : all.filter((o) => o.progress === filter)).filter(
-    (o) => !q || `${o.order_no} ${o.po_number ?? ''} ${o.customer_name} ${o.customer_name_bn ?? ''}`.toLowerCase().includes(q),
-  )
-  const count = (f: Filter) => (f === 'ACTIVE' ? active.length : f === 'ALL' ? all.length : all.filter((o) => o.progress === f).length)
+  const matches = (o: OrderRow) => !q || `${o.order_no} ${o.po_number ?? ''} ${o.customer_name} ${o.customer_name_bn ?? ''}`.toLowerCase().includes(q)
+  const inTab = (f: Filter) => (f === 'ACTIVE' ? active : f === 'ALL' ? all : all.filter((o) => o.progress === f)).filter(matches)
+  const rows = inTab(filter)
+  // tab counts follow the search, so each count is what that tab will list
+  const count = (f: Filter) => inTab(f).length
 
   return (
     <>
