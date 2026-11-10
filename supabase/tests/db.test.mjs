@@ -468,13 +468,13 @@ const split = await q(`select sale_id, amount from bill_settlements where money_
 check('a split cannot settle another customer\'s bill', !split.some((x) => x.sale_id === s3), JSON.stringify(split))
 check('a split settles a bill only up to what it owes', split.length === 1 && +split[0].amount === 5000
   && +(await one(`select due_amount from v_sale_dues where id = $1`, [sSplit])).due_amount === 0, JSON.stringify(split))
-check('the database reports its migration number', +(await one(`select public.schema_version() v`)).v === 21)
+check('the database reports its migration number', +(await one(`select public.schema_version() v`)).v === 22)
 check('server days are Dhaka days', (await one(`select current_setting('TimeZone') tz`)).tz === 'Asia/Dhaka')
 for (const kind of ['DRYER', 'SORTER']) {
   const st = await one(`select * from section_stats($1)`, [kind])
-  const want = await one(`select count(*) filter (where status = 'COMPLETED') c, avg(main_yield_pct) filter (where status = 'COMPLETED') y
+  const want = await one(`select count(*) filter (where status = 'COMPLETED') c, round(100 * sum(main_kg) filter (where status = 'COMPLETED') / sum(input_kg) filter (where status = 'COMPLETED'), 2) y
                           from v_production_batches where kind = $1`, [kind])
-  check(`${kind} figures cover every batch`, +st.completed === +want.c && +st.completed > 0 && Math.abs(+st.avg_yield_pct - +want.y) < 1e-9, JSON.stringify(st))
+  check(`${kind} figures cover every batch, yield weighted by kg`, +st.completed === +want.c && +st.completed > 0 && Math.abs(+st.avg_yield_pct - +want.y) < 1e-9, JSON.stringify(st))
 }
 const priced = await one(`select count(*) c from v_item_price_changed v
   where v.changed_at = (select max(changed_at) from item_price_history h where h.item_id = v.item_id)`)
